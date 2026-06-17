@@ -1,0 +1,40 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.pytest_tmp/
+.coverage
+htmlcov/
+.venv/
+venv/
+env/
+
+# Generated experiment outputs
+*_output.json
+*_quick_output.json
+output.txt
+output*.txt
+deep_output*.txt
+diagnose_output.txt
+comparison_output.txt
+investigate_output*.txt
+test_output.txt
+
+# Local scratch and cluster runs
+scratch/
+slurm/
+tmp_*/
+figures/
+
+# Frontend build artifacts
+node_modules/
+dist/
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# OS/editor files
+.DS_Store
+Thumbs.db
