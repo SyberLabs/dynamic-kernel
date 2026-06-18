@@ -40,6 +40,7 @@ paper.
 | `tests/test_memory_law.py` | Preference-memory API and diagnostics | pytest |
 | `two_route_memory_theorem.py` | Minimal choice/memory theorem witness | `two_route_memory_theorem_output.json` |
 | `kernel_local_regret_witness.py` | Local-regret stale-route witness | `kernel_local_regret_witness_output.json` |
+| `paper_figures.py` | Layered-memory and semiconductor paper figures | `figures/*.svg`, `PAPER_FIGURE_GENERATION_REPORT.md` |
 
 ### Neural V2 Validation Bench
 
@@ -76,6 +77,7 @@ Use these before any HPC run:
 ```powershell
 .venv\Scripts\python.exe -m pytest -q
 .venv\Scripts\python.exe neural_v2_seed_validation.py
+.venv\Scripts\python.exe paper_figures.py
 .venv\Scripts\python.exe neural_v2_router_benchmark.py
 .venv\Scripts\python.exe semiconductor_onshoring_model_benchmark.py
 .venv\Scripts\python.exe semiconductor_onshoring_falsification.py

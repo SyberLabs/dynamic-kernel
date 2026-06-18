@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 interface PresetMeta {
@@ -13,11 +14,153 @@ const PRESET_CONFIGS: Record<string, { accent: string; icon: string }> = {
   airport:       { accent: '#34d399', icon: '✈️'  },
   museum:        { accent: '#9b6cf7', icon: '🏛️'  },
   supply_chain:  { accent: '#f5a623', icon: '⛓️'  },
+  wheel_city:    { accent: '#f5a623', icon: '🕸️'  },
+  rhizome_city:  { accent: '#34d399', icon: '🌐'  },
+  neural_dense:  { accent: '#9b6cf7', icon: '🧠'  },
   social_media:  { accent: '#ef4444', icon: '#' },
 };
 
-export default function ControlHub() {
+interface PortCard {
+  route: string;
+  kicker: string;
+  title: string;
+  accent: string;
+  glow: string;
+  body: ReactNode;
+}
+
+// Ports are grouped by whether they consume the Step-1 topology selection.
+// "Topology Explorers" render whatever environment is chosen above; the
+// "Standalone Studies" carry their own fixed graphs and ignore the selector.
+const TOPOLOGY_EXPLORERS: PortCard[] = [
+  {
+    route: '/base',
+    kicker: 'Explorer',
+    title: 'Mathematical Kernel',
+    accent: '#4f8ef5',
+    glow: 'rgba(79,142,245,0.2)',
+    body: (
+      <>
+        Visualize pure Markovian transition probabilities P<sub>ij</sub>, node alignment scores,
+        system entropy, and mixing time. Click any node for a live diagnostic breakdown.
+      </>
+    ),
+  },
+  {
+    route: '/mall',
+    kicker: 'Explorer',
+    title: 'Population Simulator',
+    accent: '#34d399',
+    glow: 'rgba(52,211,153,0.2)',
+    body: (
+      <>
+        Observe 1,000+ discrete agents traversing the topology in real time. Control crowd
+        demographics, temperature, and sponsorship channels with live occupancy and edge traffic.
+      </>
+    ),
+  },
+];
+
+const STANDALONE_STUDIES: PortCard[] = [
+  {
+    route: '/demo',
+    kicker: 'Portfolio',
+    title: 'Semiconductor Demo',
+    accent: '#34d399',
+    glow: 'rgba(52,211,153,0.2)',
+    body: (
+      <>
+        Explore the strongest current evidence case: where policy budget changes routing, where
+        it fails, and why topology decides the feasible frontier.
+      </>
+    ),
+  },
+  {
+    route: '/compare',
+    kicker: 'Study',
+    title: 'City Comparison',
+    accent: '#f5a623',
+    glow: 'rgba(245,166,35,0.2)',
+    body: (
+      <>
+        Run WHEEL and RHIZOME side by side with matched demographics. Compare entropy, mixing
+        time, hub saturation, and sponsor response.
+      </>
+    ),
+  },
+];
+
+function PortCardView({ card }: { card: PortCard }) {
   const navigate = useNavigate();
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => navigate(card.route)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          navigate(card.route);
+        }
+      }}
+      style={{
+        background: '#111520', border: '1px solid rgba(255,255,255,0.08)',
+        padding: '28px', borderRadius: 16, cursor: 'pointer',
+        transition: 'all 0.2s', boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+        flex: '1 1 300px', maxWidth: 360, outline: 'none',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = card.accent;
+        e.currentTarget.style.boxShadow = `0 0 24px ${card.glow}`;
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+        e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.5)';
+      }}
+      onFocus={(e) => {
+        e.currentTarget.style.borderColor = card.accent;
+        e.currentTarget.style.boxShadow = `0 0 24px ${card.glow}`;
+      }}
+      onBlur={(e) => {
+        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+        e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.5)';
+      }}
+    >
+      <div style={{
+        fontSize: 11, color: card.accent, fontWeight: 600,
+        letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8,
+      }}>
+        {card.kicker}
+      </div>
+      <h2 style={{ fontSize: 18, marginBottom: 8, color: card.accent, fontWeight: 700 }}>
+        {card.title}
+      </h2>
+      <p style={{ fontSize: 12, color: '#7a82a0', lineHeight: 1.6, marginBottom: 16 }}>
+        {card.body}
+      </p>
+      <div style={{
+        fontSize: 11, color: card.accent, fontWeight: 600,
+        display: 'flex', alignItems: 'center', gap: 4,
+      }}>
+        Open →
+      </div>
+    </div>
+  );
+}
+
+function GroupLabel({ children }: { children: ReactNode }) {
+  return (
+    <div style={{
+      fontSize: 10, fontWeight: 600, letterSpacing: '0.12em',
+      color: '#4a5070', textTransform: 'uppercase', marginBottom: 16,
+      textAlign: 'center',
+    }}>
+      {children}
+    </div>
+  );
+}
+
+export default function ControlHub() {
   const [presets, setPresets] = useState<Record<string, PresetMeta>>({});
   const [activePreset, setActivePreset] = useState<string>('mall');
   const [loading, setLoading] = useState<string | null>(null);
@@ -262,9 +405,9 @@ export default function ControlHub() {
         }}>
           Topology Control Hub
         </h1>
-        <p style={{ color: '#7a82a0', fontSize: 13, maxWidth: 460, lineHeight: 1.6 }}>
-          Select an environment, then enter a port to observe or analyse the
-          routing kernel in real-time.
+        <p style={{ color: '#7a82a0', fontSize: 13, maxWidth: 480, lineHeight: 1.6 }}>
+          Choose a topology to load into the explorers, or jump straight into a
+          self-contained study. Each port observes or analyses the routing kernel in real time.
         </p>
       </div>
 
@@ -272,10 +415,17 @@ export default function ControlHub() {
       <div style={{ width: '100%', maxWidth: 780 }}>
         <div style={{
           fontSize: 10, fontWeight: 600, letterSpacing: '0.12em',
-          color: '#4a5070', textTransform: 'uppercase', marginBottom: 16,
+          color: '#4a5070', textTransform: 'uppercase', marginBottom: 6,
           textAlign: 'center',
         }}>
-          Step 1 — Choose Topology
+          Choose Topology
+        </div>
+        <div style={{
+          fontSize: 11, color: '#7a82a0', textAlign: 'center',
+          marginBottom: 16, lineHeight: 1.5,
+        }}>
+          Loads into the <span style={{ color: '#4f8ef5', fontWeight: 600 }}>Topology Explorers</span> below.
+          The standalone studies use their own fixed graphs.
         </div>
 
         {renderPresetArea()}
@@ -292,172 +442,23 @@ export default function ControlHub() {
         )}
       </div>
 
-      {/* ── Port Cards ── */}
+      {/* ── Topology Explorers (consume the Step-1 selection) ── */}
       <div style={{ width: '100%', maxWidth: 780 }}>
-        <div style={{
-          fontSize: 10, fontWeight: 600, letterSpacing: '0.12em',
-          color: '#4a5070', textTransform: 'uppercase', marginBottom: 16,
-          textAlign: 'center',
-        }}>
-          Step 2 — Enter a Port
-        </div>
-
+        <GroupLabel>Topology Explorers · use the selection above</GroupLabel>
         <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', justifyContent: 'center' }}>
-          {/* Mathematical Kernel Port */}
-          <div
-            onClick={() => navigate('/base')}
-            style={{
-              background: '#111520', border: '1px solid rgba(255,255,255,0.08)',
-              padding: '28px 28px', borderRadius: 16, width: 340, cursor: 'pointer',
-              transition: 'all 0.2s', boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
-              flex: '1 1 300px', maxWidth: 360,
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.borderColor = '#4f8ef5';
-              e.currentTarget.style.boxShadow = '0 0 24px rgba(79,142,245,0.2)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-              e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.5)';
-            }}
-          >
-            <div style={{
-              fontSize: 11, color: '#4f8ef5', fontWeight: 600,
-              letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8,
-            }}>
-              Port 1
-            </div>
-            <h2 style={{ fontSize: 18, marginBottom: 8, color: '#4f8ef5', fontWeight: 700 }}>
-              Mathematical Kernel
-            </h2>
-            <p style={{ fontSize: 12, color: '#7a82a0', lineHeight: 1.6, marginBottom: 16 }}>
-              Visualize pure Markovian transition probabilities P<sub>ij</sub>, node alignment
-              scores, system entropy, and mixing time. Click any node for a live diagnostic
-              breakdown.
-            </p>
-            <div style={{
-              fontSize: 11, color: '#4f8ef5', fontWeight: 600,
-              display: 'flex', alignItems: 'center', gap: 4,
-            }}>
-              Open → 
-            </div>
-          </div>
+          {TOPOLOGY_EXPLORERS.map((card) => (
+            <PortCardView key={card.route} card={card} />
+          ))}
+        </div>
+      </div>
 
-          {/* Mall Port */}
-          <div
-            onClick={() => navigate('/mall')}
-            style={{
-              background: '#111520', border: '1px solid rgba(255,255,255,0.08)',
-              padding: '28px 28px', borderRadius: 16, width: 340, cursor: 'pointer',
-              transition: 'all 0.2s', boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
-              flex: '1 1 300px', maxWidth: 360,
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.borderColor = '#34d399';
-              e.currentTarget.style.boxShadow = '0 0 24px rgba(52,211,153,0.2)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-              e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.5)';
-            }}
-          >
-            <div style={{
-              fontSize: 11, color: '#34d399', fontWeight: 600,
-              letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8,
-            }}>
-              Port 2
-            </div>
-            <h2 style={{ fontSize: 18, marginBottom: 8, color: '#34d399', fontWeight: 700 }}>
-              Population Simulator
-            </h2>
-            <p style={{ fontSize: 12, color: '#7a82a0', lineHeight: 1.6, marginBottom: 16 }}>
-              Observe 1,000+ discrete agents traversing the topology in real-time.
-              Control crowd demographics, temperature, and sponsorship channels.
-              Live node occupancy and edge traffic counts.
-            </p>
-            <div style={{
-              fontSize: 11, color: '#34d399', fontWeight: 600,
-              display: 'flex', alignItems: 'center', gap: 4,
-            }}>
-              Open →
-            </div>
-          </div>
-
-          <div
-            onClick={() => navigate('/compare')}
-            style={{
-              background: '#111520', border: '1px solid rgba(255,255,255,0.08)',
-              padding: '28px 28px', borderRadius: 16, width: 340, cursor: 'pointer',
-              transition: 'all 0.2s', boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
-              flex: '1 1 300px', maxWidth: 360,
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.borderColor = '#f5a623';
-              e.currentTarget.style.boxShadow = '0 0 24px rgba(245,166,35,0.2)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-              e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.5)';
-            }}
-          >
-            <div style={{
-              fontSize: 11, color: '#f5a623', fontWeight: 600,
-              letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8,
-            }}>
-              Port 3
-            </div>
-            <h2 style={{ fontSize: 18, marginBottom: 8, color: '#f5a623', fontWeight: 700 }}>
-              City Comparison
-            </h2>
-            <p style={{ fontSize: 12, color: '#7a82a0', lineHeight: 1.6, marginBottom: 16 }}>
-              Run WHEEL and RHIZOME side by side with matched demographics.
-              Compare entropy, mixing time, hub saturation, and sponsor response.
-            </p>
-            <div style={{
-              fontSize: 11, color: '#f5a623', fontWeight: 600,
-              display: 'flex', alignItems: 'center', gap: 4,
-            }}>
-              Open -&gt;
-            </div>
-          </div>
-
-          <div
-            onClick={() => navigate('/neural')}
-            style={{
-              background: '#111520', border: '1px solid rgba(255,255,255,0.08)',
-              padding: '28px 28px', borderRadius: 16, width: 340, cursor: 'pointer',
-              transition: 'all 0.2s', boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
-              flex: '1 1 300px', maxWidth: 360,
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.borderColor = '#9b6cf7';
-              e.currentTarget.style.boxShadow = '0 0 24px rgba(155,108,247,0.2)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-              e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.5)';
-            }}
-          >
-            <div style={{
-              fontSize: 11, color: '#9b6cf7', fontWeight: 600,
-              letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8,
-            }}>
-              Port 4
-            </div>
-            <h2 style={{ fontSize: 18, marginBottom: 8, color: '#9b6cf7', fontWeight: 700 }}>
-              Neural Optimizer
-            </h2>
-            <p style={{ fontSize: 12, color: '#7a82a0', lineHeight: 1.6, marginBottom: 16 }}>
-              Watch a fully connected network reorganize its own beta weights in real time
-              to maximize a chosen structural symmetry.
-            </p>
-            <div style={{
-              fontSize: 11, color: '#9b6cf7', fontWeight: 600,
-              display: 'flex', alignItems: 'center', gap: 4,
-            }}>
-              Open -&gt;
-            </div>
-          </div>
+      {/* ── Standalone Studies (self-contained fixed graphs) ── */}
+      <div style={{ width: '100%', maxWidth: 780 }}>
+        <GroupLabel>Standalone Studies · self-contained</GroupLabel>
+        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', justifyContent: 'center' }}>
+          {STANDALONE_STUDIES.map((card) => (
+            <PortCardView key={card.route} card={card} />
+          ))}
         </div>
       </div>
 

@@ -170,6 +170,23 @@ class TestResearchEndpoints:
         ]:
             assert key in history
 
+    def test_semiconductor_demo_payload_shape(self, client):
+        r = client.get("/api/demo/semiconductor")
+        assert r.status_code == 200
+        data = r.json()
+        for key in [
+            "config",
+            "summary",
+            "choicePointRelocation",
+            "topologySurgery",
+            "feedbackContinuum",
+        ]:
+            assert key in data
+        assert len(data["choicePointRelocation"]) > 0
+        assert len(data["topologySurgery"]) > 0
+        assert len(data["feedbackContinuum"]) > 0
+        assert "relocation_max_share_lift" in data["summary"]
+
 
 # ---------------------------------------------------------------------------
 # POST /api/diagnostic

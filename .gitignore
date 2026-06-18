@@ -1,6 +1,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.egg-info/
 .pytest_cache/
 .pytest_tmp/
 .coverage
@@ -12,6 +13,7 @@ env/
 # Generated experiment outputs
 *_output.json
 *_quick_output.json
+!semiconductor_onshoring_falsification_output.json
 output.txt
 output*.txt
 deep_output*.txt
@@ -25,6 +27,8 @@ scratch/
 slurm/
 tmp_*/
 figures/
+!visualizer/public/figures/
+!visualizer/public/figures/*.svg
 
 # Frontend build artifacts
 node_modules/

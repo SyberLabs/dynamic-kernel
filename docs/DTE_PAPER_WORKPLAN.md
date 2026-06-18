@@ -77,16 +77,16 @@ Adaptive network interventions must be evaluated as coupled feasibility, allocat
 
 | Figure | Purpose | Source | Remaining Work |
 |---|---|---|---|
-| 1. DTE mechanism schematic | Explain position, telemetry, alignment, transition, and feedback | `kernel.py`, paper equations | Create vector diagram |
-| 2. Layered-memory state schematic | Show `X_t`, `A_t`, `M_s`, `M_p`, buffers, ecology | `DTE_V1_THEORY.md` | Create formal diagram |
+| 1. DTE mechanism schematic | Explain position, telemetry, alignment, transition, and feedback | `figures/dte_mechanism_schematic.svg` | Generated SVG figure |
+| 2. Layered-memory state schematic | Show `X_t`, `A_t`, `M_s`, `M_p`, buffers, ecology | `figures/dte_layered_memory_schematic.svg` | Generated SVG figure |
 | 3. Neural V2 regime boundary | Clean/hard/adversarial-switch comparison | `neural_v2_seed_validation_output.json` | Generated table in `NEURAL_V2_SEED_VALIDATION_REPORT.md` |
 | 4. DTE policy-lane boundary | Reliability-UCB versus EXP3 variants | `figures/neural_v2_seed_validation_delta.svg` | Generated SVG figure |
-| 5. Semiconductor topology | Show route-choice points, serial offshore corridor, U.S. production gates | `semiconductor_onshoring.py` | Add plotting script with gate annotations |
-| 6. Feasibility-allocation-adaptation concept | Distinguish capability, route capture, and feedback | Paper argument | Create conceptual diagram |
-| 7. Choice-point relocation | Equal-cost budget versus mean onshore share by location | `semiconductor_onshoring_falsification_output.json` | Create line plot |
-| 8. Topology surgery | Serial corridor versus reconsideration exits | `semiconductor_onshoring_falsification_output.json` | Create paired topology and result plot |
-| 9. Model benchmark | Robust cells across static, frozen-agent, and DTE models | `semiconductor_onshoring_model_benchmark_output.json` | Create bar and disagreement plot |
-| 10. Topology nulls | Onshore share versus lot completion, colored by robustness | `semiconductor_onshoring_falsification_output.json` | Create scatter plot |
+| 5. Semiconductor topology | Show route-choice points, serial offshore corridor, U.S. production gates | `figures/semiconductor_topology_schematic.svg` | Generated SVG figure |
+| 6. Feasibility-allocation-adaptation concept | Distinguish capability, route capture, and feedback | `figures/feasibility_allocation_adaptation.svg` | Generated SVG figure |
+| 7. Choice-point relocation | Equal-cost budget versus mean onshore share by location | `figures/semiconductor_choice_point_relocation.svg` | Generated SVG figure |
+| 8. Topology surgery | Serial corridor versus reconsideration exits | `figures/semiconductor_topology_surgery.svg` | Generated SVG figure |
+| 9. Model benchmark | Robust cells across static, frozen-agent, and DTE models | `figures/semiconductor_model_benchmark.svg` | Generated SVG figure |
+| 10. Topology nulls | Onshore share versus lot completion, colored by robustness | `figures/semiconductor_topology_nulls.svg` | Generated SVG figure |
 
 ## Table Plan
 

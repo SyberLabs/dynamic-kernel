@@ -12,6 +12,7 @@ Dynamic Kernel is a Python simulation and API platform for studying non-stationa
 - Simulation infrastructure for graph routing, population movement, and domain-specific adapters.
 - Backend/frontend integration through FastAPI, WebSockets, and a React/Vite visualizer.
 - Research discipline through manifests, reports, falsification scripts, and scoped claim boundaries.
+- A self-contained semiconductor policy demo backed by a frozen experiment artifact.
 
 ## Architecture
 
@@ -72,6 +73,7 @@ python -m pytest tests/ -v
 - Includes multiple domain presets such as mall, airport, museum, and supply chain.
 - V1 experiment manifest maps claims to scripts, output artifacts, and required validation.
 - Reassessment documents distinguish validated simulation behavior from exploratory theory.
+- Semiconductor Policy Lab demo reads from `semiconductor_onshoring_falsification_output.json`.
 - Large generated output files are intentionally excluded from this public package.
 
 ## Known Limitations
