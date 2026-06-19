@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://i.imgur.com/8cWt39p.png" width="700">
+</p>
+
 # Dynamic Kernel
 
 Simulation platform for non-stationary routing over weighted graphs and dynamic topology experiments.
