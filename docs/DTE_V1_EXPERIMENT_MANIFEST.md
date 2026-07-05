@@ -35,7 +35,7 @@ into a later paper and given their own evidence map.
 
 | Script/Test | Purpose | Output |
 |---|---|---|
-| `test_kernel.py` and `tests/test_kernel.py` | Core transition and compatibility tests | pytest |
+| `tests/test_kernel.py` | Core transition and compatibility tests | pytest |
 | `tests/test_memory_law.py` | Preference-memory API and diagnostics | pytest |
 | `two_route_memory_theorem.py` | Minimal choice/memory theorem witness | `two_route_memory_theorem_output.json` |
 | `kernel_local_regret_witness.py` | Local-regret stale-route witness | `kernel_local_regret_witness_output.json` |
