@@ -96,17 +96,9 @@ $$
 
 where $b_j$ is a node-specific bias.
 
-The dynamic edge weight is
+The dynamic edge weight is:
 
-$$
-W_{ij}(a_t)
-=
-\alpha D_{ij}
--
-\beta_{ij}A_j(a_t)
--
-S_{ij},
-$$
+$$W_{ij}(a_t)=\alpha D_{ij}-\beta_{ij}A_j(a_t)-S_{ij}.$$
 
 where:
 
@@ -116,30 +108,17 @@ where:
 
 The transition matrix is a row-wise softmax over negative weights:
 
-$$
-P_{ij}(a_t)
-=
-\frac{\exp(-W_{ij}(a_t)/\tau)}
-{\sum_{k:(i,k)\in E}\exp(-W_{ik}(a_t)/\tau)}
-\quad \text{for } (i,j)\in E,
-$$
+$$P_{ij}(a_t)=\frac{\exp(-W_{ij}(a_t)/\tau)}{\sum_{k:(i,k)\in E}\exp(-W_{ik}(a_t)/\tau)}.$$
 
-with $P_{ij}=0$ for non-edges. The temperature $\tau>0$ controls exploration relative to greedy route selection.
+This expression applies when $(i,j)\in E$, with $P_{ij}=0$ for non-edges. The temperature $\tau>0$ controls exploration relative to greedy route selection.
 
 ### 2.3 Telemetry feedback
 
-After the agent visits node $j^*=X_{t+1}$, telemetry updates by
+After the agent visits node $j^*=X_{t+1}$, telemetry updates by:
 
-$$
-a_{t+1}
-=
-\operatorname{norm}
-\left(
-(1-\lambda)a_t+\lambda N_{j^*}+\varepsilon_t
-\right),
-$$
+$$a_{t+1}=\mathrm{norm}\left((1-\lambda)a_t+\lambda N_{j^*}+\varepsilon_t\right).$$
 
-where $\lambda\in[0,1]$ is the feedback rate, $\varepsilon_t$ is optional noise, and $\operatorname{norm}$ projects the vector to unit norm.
+Here $\lambda\in[0,1]$ is the feedback rate, $\varepsilon_t$ is optional noise, and $\mathrm{norm}$ projects the vector to unit norm.
 
 When $\lambda=0$, each agent follows a time-homogeneous Markov chain conditional on its initial telemetry. When $\lambda>0$, the position process alone is non-stationary because route history changes future transition probabilities. The joint process $(X_t,a_t)$ remains Markov.
 
@@ -291,12 +270,7 @@ Each agent can complete at most one U.S. demand lot. Completed lots are attribut
 
 The principal allocation metric is
 
-$$
-\text{Onshore Share}
-=
-\frac{\text{Domestic Completed U.S. Lots}}
-{\text{Total Completed U.S. Lots}}.
-$$
+$$\mathrm{OnshoreShare}=\frac{\mathrm{DomesticCompletedUSLots}}{\mathrm{TotalCompletedUSLots}}.$$
 
 This avoids interpreting repeated circulation through a demand edge as repeated production.
 
@@ -304,28 +278,20 @@ This avoids interpreting repeated circulation through a demand edge as repeated 
 
 A policy cell is classified as a viable onshoring transition when:
 
-$$
-\text{Onshore Share}\geq \theta_{\text{share}},
-$$
+$$\mathrm{OnshoreShare}\geq \theta_{\mathrm{share}}.$$
 
-$$
-\text{Overflow}\leq \theta_{\text{overflow}},
-$$
+$$\mathrm{Overflow}\leq \theta_{\mathrm{overflow}}.$$
 
-$$
-\text{Dependency Pressure}\leq \theta_{\text{dependency}},
-$$
+$$\mathrm{DependencyPressure}\leq \theta_{\mathrm{dependency}}.$$
 
-$$
-\text{Finished-Lot Ratio}\geq \theta_{\text{flow}}.
-$$
+$$\mathrm{FinishedLotRatio}\geq \theta_{\mathrm{flow}}.$$
 
 The primary thresholds are:
 
-- $\theta_{\text{share}}=0.50$,
-- $\theta_{\text{overflow}}=0.10$,
-- $\theta_{\text{dependency}}=0.65$,
-- $\theta_{\text{flow}}=0.85$.
+- $\theta_{\mathrm{share}}=0.50$,
+- $\theta_{\mathrm{overflow}}=0.10$,
+- $\theta_{\mathrm{dependency}}=0.65$,
+- $\theta_{\mathrm{flow}}=0.85$.
 
 A cell is robust when at least two-thirds of seeds satisfy the viable-transition criterion. With five seeds, this requires at least four viable runs.
 
@@ -373,11 +339,7 @@ At 320 agents, the no-pull policy has a robust viable-transition rate of 40% and
 
 Import friction produces no observed change in mean onshore share:
 
-$$
-\max_{\text{tariff levels}}
-\Delta \text{Mean Onshore Share}
-=0.
-$$
+$$\max_{\mathrm{tariff\ levels}}\Delta\mathrm{MeanOnshoreShare}=0.$$
 
 This is not evidence that tariffs are universally ineffective. In the modeled topology, the tariff friction is applied on serial offshore corridor edges after route commitment. Proposition 1 predicts that these cost changes cannot reroute flow.
 

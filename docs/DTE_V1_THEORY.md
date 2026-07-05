@@ -179,7 +179,7 @@ $$
 with:
 
 $$
-\eta_j(t)=\operatorname{clip}\left(
+\eta_j(t)=\mathrm{clip}\left(
 \eta
 + g_s\,\mathrm{traffic\_share}_j\,\max(0,\hat R_j(t)-R_j(t))
 + g_o\,\mathrm{destination\_regret}_j(t),
@@ -207,7 +207,7 @@ V1 therefore adds local opportunity cost:
 
 $$
 \mathrm{regret}_{ij}(t)=
-\max\left(0,\max_{k\in\operatorname{Out}(i)}R_k(t)-R_j(t)\right)
+\max\left(0,\max_{k\in\mathrm{Out}(i)}R_k(t)-R_j(t)\right)
 $$
 
 and destination-level regret:
