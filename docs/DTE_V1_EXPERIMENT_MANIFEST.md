@@ -16,9 +16,8 @@ Controlled bench: Neural V2 adaptive inference routing
 Applied case: semiconductor onshoring and supply-chain feasibility
 ```
 
-Social media, influence wargames, ants, microbiome, and consumer goods remain
-future-work or demonstration modules unless explicitly moved into a later
-paper.
+Other exploratory domains remain internal future work unless explicitly moved
+into a later paper and given their own evidence map.
 
 ## Proposition-To-Experiment Map
 
@@ -62,13 +61,13 @@ Boundary: external UCB/EXP3 still win when they own the full policy
 
 | Script | Purpose | Output | Report |
 |---|---|---|---|
-| `semiconductor_onshoring.py` | Base topology and policy sweep | `semiconductor_onshoring_output.json` | `SEMICONDUCTOR_ONSHORING_REPORT.md` |
-| `semiconductor_onshoring_frontier.py` | Feasibility frontier | `semiconductor_onshoring_frontier_output.json` | `SEMICONDUCTOR_ONSHORING_FRONTIER_REPORT.md` |
-| `semiconductor_onshoring_input_phase_diagram.py` | Input constraint phase diagram | `semiconductor_onshoring_input_phase_output.json` | `SEMICONDUCTOR_ONSHORING_INPUT_PHASE_REPORT.md` |
-| `semiconductor_onshoring_inventory_phase_diagram.py` | Inventory and reserve phase diagram | `semiconductor_onshoring_inventory_phase_output.json` | `SEMICONDUCTOR_ONSHORING_INVENTORY_PHASE_REPORT.md` |
+| `semiconductor_onshoring.py` | Base topology and simulation primitives | dependency for case-study scripts | source |
+| `semiconductor_onshoring_frontier.py` | Feasibility classification helper | dependency for case-study scripts | source |
+| `semiconductor_onshoring_feasibility_preference.py` | Feasibility-preference surface | `semiconductor_onshoring_feasibility_preference_output.json` | `SEMICONDUCTOR_ONSHORING_FEASIBILITY_PREFERENCE_REPORT.md` |
+| `semiconductor_onshoring_classification_robustness.py` | Threshold robustness | `semiconductor_onshoring_classification_robustness_output.json` | `SEMICONDUCTOR_ONSHORING_CLASSIFICATION_ROBUSTNESS_REPORT.md` |
 | `semiconductor_onshoring_model_benchmark.py` | Static/frozen/DTE comparison | `semiconductor_onshoring_model_benchmark_output.json` | `SEMICONDUCTOR_ONSHORING_MODEL_BENCHMARK_REPORT.md` |
 | `semiconductor_onshoring_falsification.py` | Choice-point relocation, topology surgery, feedback, nulls | `semiconductor_onshoring_falsification_output.json` | `SEMICONDUCTOR_ONSHORING_FALSIFICATION_REPORT.md` |
-| `semiconductor_onshoring_classification_robustness.py` | Threshold robustness | `semiconductor_onshoring_classification_robustness_output.json` | `SEMICONDUCTOR_ONSHORING_CLASSIFICATION_ROBUSTNESS_REPORT.md` |
+| `leverage_screen.py` | Analytic predict-then-confirm screen for intervention liveness | `leverage_screen_output.json` | `LEVERAGE_SCREEN_REPORT.md` |
 
 ## Local Reproduction Commands
 

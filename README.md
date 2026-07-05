@@ -72,6 +72,8 @@ Run tests:
 python -m pytest tests/ -v
 ```
 
+Current public reproduction suite: `149 passed`.
+
 Targeted DTE regression slice:
 
 ```bash
@@ -95,7 +97,7 @@ python -m pytest tests/test_review_fixes.py tests/test_neural_v2_router_benchmar
 - This is a simulation and research platform, not a validated physical, neural, or economic theory.
 - Some generated outputs are large; only selected paper artifacts are packaged here.
 - Several exploratory domains should remain future work unless promoted into a later evidence set.
-- The public repository should be cleaned of caches, temporary outputs, local virtual environments, and private scratch files.
+- The public repository intentionally omits internal exploratory domains, scratch outputs, local virtual environments, and private lab notes.
 - Related-work positioning in the DTE draft remains a TODO and should receive a literature pass before submission.
 
 ## Status

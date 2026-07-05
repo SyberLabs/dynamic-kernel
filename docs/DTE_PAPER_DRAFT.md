@@ -684,10 +684,10 @@ cited only as the estimator-bias case study in Section 7.4. The two-route
 switching scenario that exposed the bias runs as a permanent regression test
 in `tests/test_review_fixes.py`.
 
-The repository test suite currently passes:
+The public reproduction suite packaged in this repository currently passes:
 
 ```text
-252 passed
+149 passed
 ```
 
 **TODO before submission:**
