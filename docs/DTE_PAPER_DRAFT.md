@@ -206,13 +206,7 @@ Therefore, any finite intervention that changes only $D_{ij}$, $\beta_{ij}$, $S_
 
 Since $j$ is the only admissible outgoing neighbor of $i$, the softmax denominator contains one term:
 
-$$
-P_{ij}
-=
-\frac{\exp(-W_{ij}/\tau)}
-{\exp(-W_{ij}/\tau)}
-=1.
-$$
+$$P_{ij}=\exp(-W_{ij}/\tau)/\exp(-W_{ij}/\tau)=1.$$
 
 No finite modification of $W_{ij}$ changes this ratio. $\square$
 

@@ -32,15 +32,11 @@ Let:
 - $\epsilon$: exploration rate.
 - $T$: depletion time.
 
-Assume:
+Assume the high route is initially better and then depletes:
 
-$$
-r_h(t)=
-\begin{cases}
-r_h>r_l, & t<T,\\
-0, & t\ge T.
-\end{cases}
-$$
+$$r_h(t)=r_h>r_l\ \mathrm{for}\ t<T.$$
+
+$$r_h(t)=0\ \mathrm{for}\ t\ge T.$$
 
 The route scores are:
 
