@@ -26,7 +26,7 @@ paper.
 |---|---|---|---|
 | P1 Markov closure | DTE is Markov on augmented memory state, not generally on position alone | `DTE_V1_THEORY.md`, `kernel.py`, memory-law tests | Unit tests plus formal proof sketch |
 | P2 Choice-point invariance | Singleton-outdegree interventions cannot reroute finite softmax flow | `semiconductor_onshoring_falsification.py`, `TWO_ROUTE_THEOREM_NOTE.md` | Figure from relocation and topology-surgery outputs |
-| P3 Attribution fragility | Multiplicative policy lanes compound misattributed delayed reward | `neural_v2_router_benchmark.py` | Label-noise/reward-delay sweep and EXP3 gate-gain table |
+| P3 Estimator-bias fragility | Traffic-weighted multiplicative gains can recreate deadly familiarity inside a DTE learning lane; EXP3-IX importance weighting removes the artifact | `neural_v2_router_benchmark.py`, `tests/test_review_fixes.py`, archived pre-fix artifacts | Two-route regression plus pre/post Neural V2 hard benchmark |
 | P4 Arbitration boundary | External policy owners dominate clean bandit tasks; DTE helps when memory/topology matter | Neural V2 clean, hard, frontier, adversarial-switch reports | Paired seed-robust benchmark with confidence intervals |
 | P5 Feasibility-allocation distinction | Majority route share can coexist with infeasible completed production | semiconductor BOM, model benchmark, topology nulls | Scatter/table showing share versus completed lots |
 
@@ -53,8 +53,8 @@ paper.
 V1 default policy after current evidence:
 
 ```text
-Neural V2 default: reliability-arbitrated UCB
-Experimental lane: DTE-EXP3 / reliability-gated DTE-EXP3
+Neural V2 DTE-native lane: DTE-EXP3 with EXP3-IX gain estimation
+Experimental lane: reliability-gated DTE-EXP3
 Boundary: external UCB/EXP3 still win when they own the full policy
 ```
 

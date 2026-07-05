@@ -29,8 +29,8 @@ mechanism claims into policy, forecasting, or universal optimizer language.
 | Procurement pull is topology invariant | Rejected | topology nulls | Good negative result. |
 | DTE universally beats UCB/EXP3 | Rejected | Neural V2 seed validation | Good negative result. Mention directly. |
 | DTE-EXP3 is useful under adversarial switching | Supported regime result | `figures/neural_v2_seed_validation_delta.svg` | Keep, with regime qualifier. |
-| DTE-EXP3 is robust to corrupted delayed attribution | Rejected | hard Neural V2 validation | Good negative result. |
-| Reliability-UCB is the safer Neural V2 V1 default | Supported | Neural V2 hard validation | Keep as engineering conclusion, not theorem. |
+| Traffic-weighted DTE-EXP3 gains are robust to corrupted delayed attribution | Rejected | hard Neural V2 validation, archived pre-fix artifacts | Failure traced to estimator bias, not attribution fragility. |
+| DTE-EXP3 with EXP3-IX improves local-regret DTE under corrupted attribution | Supported at 30 paired seeds | corrected hard Neural V2 validation | Keep with boundary: external owners still dominate clean/switching. |
 | DTE forecasts real semiconductor outcomes | Not supported | limitation section | Must remain explicitly not claimed. |
 | DTE replaces domain-specific supply-chain tools | Not supported | limitation section | Must remain explicitly not claimed. |
 

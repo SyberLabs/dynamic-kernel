@@ -30,12 +30,15 @@ class PopulationSimulator:
         node_rewards: Optional[np.ndarray] = None,
         dwell_range: Tuple[int, int] = (20, 60),
         sink_dwell_range: Tuple[int, int] = (10, 25),
+        rng: Optional[np.random.Generator] = None,
     ):
         self.kernel = kernel
         self.K = K
         self.time_multiplier = time_multiplier
         self.dwell_range = dwell_range
         self.sink_dwell_range = sink_dwell_range
+        # None -> legacy global np.random (seed-compatible); Generator -> isolated
+        self._rng = rng
 
         # 0 = At Node, 1 = In Transit
         self.state = np.zeros(K, dtype=int)
@@ -74,6 +77,20 @@ class PopulationSimulator:
             "mean_opportunity_cost": deque(maxlen=self._metric_history_maxlen),
             "stale_flow_share": deque(maxlen=self._metric_history_maxlen),
         }
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Random source — instance Generator when injected, legacy global otherwise
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def _draw_randint(self, lo: int, hi: int, size: int) -> np.ndarray:
+        if self._rng is not None:
+            return self._rng.integers(lo, hi, size=size)
+        return np.random.randint(lo, hi, size=size)
+
+    def _draw_uniform(self, shape: Tuple[int, ...]) -> np.ndarray:
+        if self._rng is not None:
+            return self._rng.random(shape)
+        return np.random.random(shape)
 
     # ─────────────────────────────────────────────────────────────────────────
     # Population setup
@@ -279,8 +296,8 @@ class PopulationSimulator:
                 np.add.at(self.total_node_visits, self.current_node[arrived_idx], 1)
 
                 # Random dwell time 20–60 ticks
-                self.ticks_remaining[arrived_idx] = np.random.randint(
-                    self.dwell_range[0], self.dwell_range[1], size=len(arrived_idx)
+                self.ticks_remaining[arrived_idx] = self._draw_randint(
+                    self.dwell_range[0], self.dwell_range[1], len(arrived_idx)
                 )
 
                 # Apply feedback on arrival
@@ -313,7 +330,7 @@ class PopulationSimulator:
 
             # Vectorized multinomial sampling
             cumsum = np.cumsum(rows, axis=1)
-            u = np.random.random((len(at_node_idx), 1))
+            u = self._draw_uniform((len(at_node_idx), 1))
             next_nodes = np.argmax(cumsum >= u, axis=1)
 
             # ── BUG-5 FIX: sink node recovery ────────────────────────────────
@@ -329,8 +346,8 @@ class PopulationSimulator:
                 next_nodes[stuck] = 0
                 # Give them a short dwell before re-entering (10–25 ticks)
                 stuck_global_idx = at_node_idx[stuck]
-                self.ticks_remaining[stuck_global_idx] = np.random.randint(
-                    self.sink_dwell_range[0], self.sink_dwell_range[1], size=np.sum(stuck)
+                self.ticks_remaining[stuck_global_idx] = self._draw_randint(
+                    self.sink_dwell_range[0], self.sink_dwell_range[1], int(np.sum(stuck))
                 )
             elif np.any(isolated):
                 # Isolated but not a structural sink (e.g. self-loop only)
@@ -365,6 +382,12 @@ class PopulationSimulator:
                 (self.current_node[in_transit_idx], self.target_node[in_transit_idx]),
                 1
             )
+
+        # Sponsorship decay is time semantics: exactly once per simulation
+        # tick, regardless of how many agents moved. The simulator drives
+        # transition_matrix_batch directly, so without this call configured
+        # sponsor_decay would never take effect in live sessions.
+        self.kernel.tick_decay()
 
         self.tick_count += 1
         self._record_metrics(len(in_transit_idx))

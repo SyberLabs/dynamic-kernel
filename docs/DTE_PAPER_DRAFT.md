@@ -19,13 +19,18 @@ Benchmark comparisons show that a static expected-flow model predicts majority d
 
 A separate Neural V2 adaptive-routing benchmark tests the same kernel as a
 controlled decision system rather than a supply-chain case study. Across 30
-paired seeds, DTE-native EXP3 improves over local-regret DTE in clean and
-adversarial-switching regimes, but worsens under corrupted delayed attribution.
-Reliability-arbitrated UCB is the safer hard-regime DTE default, while external
+paired seeds, DTE-native EXP3 with an importance-weighted (EXP3-IX) gain
+estimator improves over local-regret DTE in clean, corrupted-delayed-
+attribution, and adversarial-switching regimes, and is the strongest
+DTE-native lane under corrupted attribution. An earlier version of this lane
+multiplied rewards by realized selection frequency instead of importance
+weighting; it appeared brittle under corrupted attribution, and that
+brittleness is now traced to the biased estimator reproducing deadly
+familiarity inside the lane itself, not to attribution noise. External
 UCB/EXP3 remain stronger when the problem reduces to clean policy ownership.
-This establishes a policy-arbitration boundary: DTE is not a universal bandit
-replacement, but a topology-memory governor whose learning lanes are
-regime-sensitive.
+This preserves a policy-arbitration boundary in revised form: DTE is not a
+universal bandit replacement, but a topology-memory governor whose learning
+lanes require unbiased gain estimation.
 
 ---
 
@@ -52,10 +57,13 @@ Third, we subject the principal case-study conclusions to adversarial falsificat
 
 Fourth, we evaluate DTE policy lanes in a controlled Neural V2 routing bench.
 This benchmark isolates adaptive inference routing under clean labels, corrupted
-delayed rewards, and adversarial switching reward surfaces. The result is
-boundary-sensitive: DTE-EXP3 is useful when the reward surface switches,
-reliability-UCB is safer when attribution is corrupted, and full policy-owning
-bandits dominate when topology memory is not needed.
+delayed rewards, and adversarial switching reward surfaces. With
+importance-weighted gain estimation, DTE-EXP3 is the strongest DTE-native lane
+in all three regimes, while full policy-owning bandits dominate when topology
+memory is not needed. The benchmark also contributes a cautionary estimator
+result: a traffic-weighted gain — reward multiplied by realized selection
+frequency — re-creates deadly familiarity inside the learning lane, and in an
+earlier draft this estimator bias masqueraded as attribution fragility.
 
 The resulting claim is deliberately narrower than a policy forecast:
 
@@ -147,6 +155,18 @@ DTE separates two intervention primitives:
 
 This distinction matters because the same nominal budget can have different effects across heterogeneous agents and different locations in the topology.
 
+Both channels act on the weight matrix before a softplus floor is applied, and
+this makes intervention effect size nonlinear in a documented way. Because the
+floor precedes the row softmax, it breaks softmax shift-invariance: the
+derivative of the floored weight with respect to the raw weight is
+\(\sigma(k\,(W_{ij}-f))\), so the marginal effect of additional sponsorship
+decays smoothly to zero once an edge is pushed below the floor. Sponsorship
+therefore has intentional diminishing returns rather than unbounded linear
+effect. Any first-order sensitivity analysis of DTE interventions must include
+this sigmoid gate; dropping it overestimates leverage on heavily sponsored
+edges by orders of magnitude (numerically, roughly 250x one unit below the
+floor at the default sharpness).
+
 Figure 1 gives the corresponding runtime loop: graph features and agent
 telemetry determine dynamic edge weights; softmax routing selects a move; the
 realized transition updates telemetry and preference memory.
@@ -160,8 +180,8 @@ following table fixes the evidentiary role of each major claim.
 |---|---|---|
 | Markov closure | The process is Markov on the augmented state including position, telemetry, structural memory, preference memory, delayed buffers, and ecology variables; the position process alone is generally non-Markovian. | Layered-memory schematic, kernel definition, memory-law tests |
 | Choice-point invariance | Singleton-outdegree interventions cannot change finite row-wise softmax next-state probabilities. | Proposition 1, choice relocation figure, topology surgery figure |
-| Attribution fragility | Multiplicative policy lanes can compound misattributed delayed reward under corrupted context labels. | Neural V2 hard benchmark, gated-EXP3 comparison |
-| Policy-arbitration boundary | DTE-native learning lanes improve DTE in specific regimes but do not dominate full policy owners on clean contextual bandit tasks. | Neural V2 seed-validation table and policy-lane figure |
+| Estimator-bias fragility | A multiplicative lane whose gain multiplies reward by realized selection frequency re-creates deadly familiarity internally; the attribution-fragility reading of an earlier draft was this estimator bias. Importance-weighted (EXP3-IX) gains remove it. | Two-route switching regression test, Neural V2 hard benchmark pre/post estimator fix (archived pre-fix artifacts) |
+| Policy-arbitration boundary | DTE-native learning lanes improve DTE across tested regimes once gains are importance-weighted, but do not dominate full policy owners on clean contextual bandit tasks. | Neural V2 seed-validation table and policy-lane figure |
 | Feasibility-allocation distinction | Majority route share can coexist with failed completed production. | BOM gates, model benchmark figure, topology nulls figure |
 
 ### Proposition 0: Markov closure under layered memory
@@ -496,31 +516,53 @@ We evaluate three regimes over 30 paired seeds:
    rewards,
 3. an adversarial-switching regime where the favored module family alternates.
 
+The DTE-EXP3 lane uses an importance-weighted gain with implicit exploration
+(EXP3-IX): the per-edge gain is realized reward divided by the realized
+selection frequency plus a smoothing term, evaluated on traffic support.
 The validation table reports paired regret reduction relative to local-regret
 DTE:
 
 | Regime | Router | Regret | 95% CI | Delta vs Local | Delta 95% CI |
 |---|---|---:|---:|---:|---:|
-| Clean | DTE-EXP3 | 0.0991 | 0.0010 | 0.0323 | 0.0012 |
+| Clean | DTE-EXP3 | 0.1081 | 0.0016 | 0.0233 | 0.0016 |
 | Clean | Reliability-UCB DTE | 0.1275 | 0.0009 | 0.0039 | 0.0011 |
 | Clean | External UCB | 0.0010 | 0.0000 | 0.1304 | 0.0008 |
-| Hard | DTE-EXP3 | 0.1876 | 0.0026 | -0.0167 | 0.0026 |
-| Hard | Reliability-gated DTE-EXP3 | 0.1784 | 0.0019 | -0.0075 | 0.0025 |
+| Hard | DTE-EXP3 | 0.1375 | 0.0013 | 0.0334 | 0.0017 |
+| Hard | Reliability-gated DTE-EXP3 | 0.1478 | 0.0013 | 0.0231 | 0.0021 |
 | Hard | Reliability-UCB DTE | 0.1681 | 0.0015 | 0.0028 | 0.0020 |
 | Hard | External EXP3 | 0.1445 | 0.0029 | 0.0264 | 0.0033 |
-| Adversarial switching | DTE-EXP3 | 0.1503 | 0.0018 | 0.0382 | 0.0020 |
-| Adversarial switching | Reliability-gated DTE-EXP3 | 0.1581 | 0.0015 | 0.0305 | 0.0017 |
+| Adversarial switching | DTE-EXP3 | 0.1646 | 0.0015 | 0.0240 | 0.0017 |
+| Adversarial switching | Reliability-gated DTE-EXP3 | 0.1659 | 0.0017 | 0.0226 | 0.0016 |
 | Adversarial switching | Reliability-UCB DTE | 0.1831 | 0.0015 | 0.0055 | 0.0017 |
 | Adversarial switching | External UCB | 0.0448 | 0.0004 | 0.1438 | 0.0016 |
 
-These results establish a policy-arbitration boundary. DTE-EXP3 is a useful
-DTE-native lane under clean and switching rewards, but it is brittle under
-corrupted delayed attribution. Reliability gating reduces poisoning in some
-settings but does not make EXP3 the hard-regime default. Reliability-arbitrated
-UCB is the safer V1 default inside DTE. External UCB and EXP3 still dominate
-when the task reduces to full policy ownership. The implication is not that DTE
-beats bandits at their own problem; it is that DTE can host learning policies
-while preserving topology and memory as first-class dynamics.
+These results revise the policy-arbitration boundary reported in an earlier
+draft of this benchmark. DTE-EXP3 is now the strongest DTE-native lane in all
+three regimes, including corrupted delayed attribution (paired delta +0.0334),
+where it also runs slightly ahead of external EXP3 in absolute regret (0.1375
+vs 0.1445). Reliability gating no longer earns its complexity: it reduces the
+hard-regime gain (+0.0231 vs +0.0334 ungated) and helps at only one of eight
+adversarial-switching grid coordinates. Reliability-arbitrated UCB is no
+longer the hard-regime default. External UCB and EXP3 still dominate whenever
+the task reduces to full policy ownership (clean paired delta +0.1304 for
+external UCB against +0.0233 for DTE-EXP3; switching +0.1438 against +0.0240).
+The implication is unchanged in kind: DTE does not beat bandits at their own
+problem; it hosts learning policies while preserving topology and memory as
+first-class dynamics — provided the hosted lane uses an unbiased gain
+estimator.
+
+The revision itself is a falsification result worth recording. The earlier
+lane computed its gain as reward multiplied by realized selection frequency,
+which throttles the update of a high-reward, rarely-taken edge by that edge's
+own unpopularity — a multiplicative rich-get-richer loop in log-weight space,
+and precisely the deadly-familiarity pathology DTE is built to diagnose. In a
+two-route switching scenario the pre-fix lane never re-preferred a revived
+sparse route within 2,800 post-switch steps; the importance-weighted lane
+recovers in about two steps, and its hard-regime paired delta flips from
+-0.0167 (worsens) to +0.0334 (largest DTE-native improvement). What the
+earlier draft reported as attribution fragility was estimator bias. The
+pre-fix artifacts are frozen in `archive/pre_estimator_fix_neural_v2/` for
+comparison, and the two-route scenario is a permanent regression test.
 
 Figure 3 visualizes the same policy-lane boundary as paired regret reduction
 relative to local-regret DTE.
@@ -564,9 +606,14 @@ replacement for contextual bandits. When labels are clean, rewards are
 immediate, and the router owns the full action distribution, external UCB and
 EXP3 are the right baselines and should win. DTE's contribution is different:
 it makes topology, memory, delayed feedback, and structural feasibility
-explicit. The learning lanes improve DTE in specific regimes, but they remain
-constrained by the topology-memory governor unless policy ownership is
-deliberately increased.
+explicit. With importance-weighted gain estimation, the EXP3 lane improves
+DTE in every tested regime, so the boundary that remains is against full
+policy ownership, not between reward regimes. The benchmark also carries a
+design lesson for hosted learning lanes generally: an estimator that scales
+updates by realized selection frequency imports the very lock-in dynamics the
+governor exists to expose, and it did so here undetected until the gain rule
+was audited. Learning lanes hosted inside adaptive-routing systems should be
+held to the same falsification discipline as the routing claims themselves.
 
 ---
 
@@ -629,10 +676,18 @@ The implementation is written in Python and NumPy. Experiments use paired common
 - `semiconductor_onshoring_model_benchmark.py`
 - `semiconductor_onshoring_falsification.py`
 
+The Neural V2 EXP3 results in this draft were generated after the
+2026-07-05 gain-estimator correction (`exp3_ix`, importance weighting with
+implicit exploration, per-source weight renormalization). The superseded
+pre-fix outputs are frozen in `archive/pre_estimator_fix_neural_v2/` and are
+cited only as the estimator-bias case study in Section 7.4. The two-route
+switching scenario that exposed the bias runs as a permanent regression test
+in `tests/test_review_fixes.py`.
+
 The repository test suite currently passes:
 
 ```text
-230 passed
+252 passed
 ```
 
 **TODO before submission:**
@@ -666,7 +721,8 @@ The broader lesson is that adaptive network interventions should be evaluated as
 | Feedback universally amplifies interventions | Rejected | Feedback-rate continuum |
 | Route share implies viable production | Rejected | BOM gates, benchmark, topology nulls |
 | DTE universally beats UCB/EXP3 | Rejected | Neural V2 seed validation |
-| DTE-EXP3 is robust to corrupted attribution | Rejected | Neural V2 hard benchmark |
+| DTE-EXP3 with traffic-weighted gains is robust to corrupted attribution | Rejected — failure traced to gain-estimator bias, not attribution noise | Neural V2 hard benchmark (archived pre-fix artifacts), two-route switching regression |
+| DTE-EXP3 with importance-weighted (EXP3-IX) gains improves under corrupted attribution | Supported at 30 paired seeds | Neural V2 hard benchmark and seed validation |
 | DTE-EXP3 is useful under adversarial switching | Supported regime result | Neural V2 adversarial-switch validation |
 | DTE replaces domain-specific supply-chain models | Not claimed | Scope and limitations |
 

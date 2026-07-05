@@ -50,12 +50,12 @@ Adaptive network interventions must be evaluated as coupled feasibility, allocat
 
 1. Neural V2 demonstrates that local-regret memory improves stale adaptive
    routing relative to surprise-only DTE.
-2. Reliability-arbitrated UCB is the current V1 default for corrupted/delayed
-   Neural V2 routing.
+2. DTE-EXP3 with the EXP3-IX gain estimator is the strongest DTE-native lane
+   under corrupted/delayed Neural V2 attribution in the corrected 30-seed run.
 3. DTE-EXP3 is valid as a DTE-native lane under isolated adversarial switching
    reward surfaces.
-4. Reliability-gated DTE-EXP3 reduces attribution poisoning in the default hard
-   regime but does not beat reliability-arbitrated UCB.
+4. Reliability-gated DTE-EXP3 no longer earns its complexity as the default
+   hard-regime lane after the estimator correction.
 5. External UCB/EXP3 remain stronger when the task reduces to clean policy
    ownership rather than topology-memory governance.
 

@@ -114,6 +114,7 @@ class DynamicTopologyKernel:
         node_bias: Optional[np.ndarray] = None,
         sponsor_friction: Optional[np.ndarray] = None,
         sponsor_decay: float = 0.0,
+        rng: Optional[np.random.Generator] = None,
     ):
         """
         Parameters
@@ -169,17 +170,30 @@ class DynamicTopologyKernel:
             physical friction reduction (e.g. "closer to entrance") rather
             than desire amplification. If None, defaults to all zeros.
         sponsor_decay : float
-            Per-step multiplicative decay applied to the *sponsored delta*
-            of both β and S tensors after each call to step().
-            Decay targets the amounts above the at-init baseline, so
-            routing never collapses below the unsponsored state.
+            Per-TIME-STEP multiplicative decay applied to the *sponsored
+            delta* of both β and S tensors via tick_decay(). Decay targets
+            the amounts above the at-init baseline, so routing never
+            collapses below the unsponsored state.
 
-            Formula (applied each step):
+            Formula (applied each time-step):
                 delta_beta    = _beta - _beta_baseline
                 _beta         = _beta_baseline + delta_beta * (1 - decay)
 
+            Decay lives in the tick, not the agent-step: step() applies it
+            (one agent stepped manually IS the tick) unless called with
+            decay=False, simulate_batch() applies it once per time-step
+            regardless of population size, and external tick loops that
+            drive transition_matrix_batch directly must call tick_decay()
+            once per tick.
+
             At 0.0 (default), no decay — sponsorships are permanent.
             At 0.01, a sponsorship halves in ~69 steps.
+        rng : np.random.Generator or None
+            Random source for transition sampling and feedback noise.
+            If None (default), the legacy global numpy RNG is used, so
+            existing np.random.seed-based workflows are unchanged. Pass
+            np.random.default_rng(seed) for isolated, reproducible runs
+            (required for paired common-random-number experiments).
         """
         self.topo = topology
         self.alpha = alpha
@@ -190,6 +204,7 @@ class DynamicTopologyKernel:
         self._weight_floor = weight_floor
         self._floor_sharpness = floor_sharpness
         self._sponsor_decay = max(0.0, min(sponsor_decay, 1.0))
+        self._rng = rng
 
         N = topology.N
 
@@ -245,8 +260,10 @@ class DynamicTopologyKernel:
         # --- Feedback function ---
         if feedback_fn is not None:
             self._feedback_fn = feedback_fn
+            self._custom_feedback = True
         else:
             self._feedback_fn = self._default_feedback
+            self._custom_feedback = False
 
         # --- Preference-memory update law (Axis 5) — opt-in, off by default ---
         self._memory_law: Optional[dict] = None
@@ -274,6 +291,17 @@ class DynamicTopologyKernel:
         When x >> floor:  result ≈ x  (passes through unchanged)
         When x << floor:  result ≈ floor  (smooth clamp)
         Transition around x = floor is smooth, preserving gradients.
+
+        DOCUMENTED NONLINEARITY: because the floor is applied before the
+        row softmax, it breaks softmax shift-invariance — a uniform shift
+        of a row's weights changes post-floor differences. The derivative
+        of the floored weight wrt the raw weight is sigmoid(k (W - floor)),
+        so intervention efficiency decays smoothly to zero once
+        sponsorship pushes an edge below the floor. This is a deliberate
+        diminishing-returns property of the sponsorship channel (numeric
+        check: leverage overestimated ~250x below the floor if the factor
+        is dropped), and edge_leverage / stationary_leverage include the
+        sigmoid gate for exactly this reason.
         """
         f = self._weight_floor
         k = self._floor_sharpness
@@ -817,7 +845,45 @@ class DynamicTopologyKernel:
     # Agent stepping
     # -------------------------------------------------------------------
 
-    def step(self, agent: AgentState) -> tuple[int, np.ndarray]:
+    # -------------------------------------------------------------------
+    # Random source — instance Generator when injected, legacy global
+    # np.random otherwise (preserves np.random.seed-based workflows)
+    # -------------------------------------------------------------------
+
+    def _draw_choice(self, n: int, p: np.ndarray) -> int:
+        if self._rng is not None:
+            return int(self._rng.choice(n, p=p))
+        return int(np.random.choice(n, p=p))
+
+    def _draw_uniform(self, shape: tuple[int, ...]) -> np.ndarray:
+        if self._rng is not None:
+            return self._rng.random(shape)
+        return np.random.random(shape)
+
+    def _draw_normal(self, shape: tuple[int, ...]) -> np.ndarray:
+        if self._rng is not None:
+            return self._rng.standard_normal(shape)
+        return np.random.randn(*shape)
+
+    def tick_decay(self) -> None:
+        """
+        Advance sponsorship decay by ONE time-step.
+
+        Erodes the sponsored delta of β and S above their at-init
+        baselines. This is time semantics, not agent semantics: call it
+        once per simulation tick no matter how many agents moved. step()
+        and simulate_batch() call it automatically; external loops that
+        drive transition_matrix_batch directly must call it themselves.
+        """
+        if self._sponsor_decay > 0:
+            beta_delta = self._beta - self._beta_baseline
+            self._beta = self._beta_baseline + beta_delta * (1.0 - self._sponsor_decay)
+            fric_delta = self._sponsor_friction - self._friction_baseline
+            self._sponsor_friction = (
+                self._friction_baseline + fric_delta * (1.0 - self._sponsor_decay)
+            )
+
+    def step(self, agent: AgentState, decay: bool = True) -> tuple[int, np.ndarray]:
         """
         Advance the agent one step through the topology.
 
@@ -825,6 +891,15 @@ class DynamicTopologyKernel:
         2. Sample next node from the agent's current row.
         3. Apply environment->telemetry feedback.
         4. Update agent state.
+
+        Parameters
+        ----------
+        decay : bool
+            Apply one tick of sponsorship decay (default True). A single
+            agent stepped manually IS the tick. When stepping SEVERAL
+            agents through one kernel within the same logical time-step,
+            pass decay=False and call tick_decay() once per tick yourself,
+            otherwise decay compounds per agent-step.
 
         Returns
         -------
@@ -840,7 +915,7 @@ class DynamicTopologyKernel:
             # Terminal / isolated node
             return agent.position, P
 
-        next_node = np.random.choice(self.topo.N, p=row)
+        next_node = self._draw_choice(self.topo.N, row)
 
         # --- Environment feedback: the visited node writes back ---
         visited_features = self.topo.node_features[next_node]
@@ -851,14 +926,8 @@ class DynamicTopologyKernel:
         agent.history.append(next_node)
         agent.step_count += 1
 
-        # --- Temporal sponsorship decay (erodes delta above baseline) ---
-        if self._sponsor_decay > 0:
-            beta_delta = self._beta - self._beta_baseline
-            self._beta = self._beta_baseline + beta_delta * (1.0 - self._sponsor_decay)
-            fric_delta = self._sponsor_friction - self._friction_baseline
-            self._sponsor_friction = (
-                self._friction_baseline + fric_delta * (1.0 - self._sponsor_decay)
-            )
+        if decay:
+            self.tick_decay()
 
         return next_node, P
 
@@ -927,7 +996,7 @@ class DynamicTopologyKernel:
 
             # Vectorized multinomial sampling via inverse CDF
             cumsum = np.cumsum(rows, axis=1)           # (K, N)
-            u = np.random.random((K, 1))               # (K, 1)
+            u = self._draw_uniform((K, 1))             # (K, 1)
             next_nodes = np.argmax(cumsum >= u, axis=1) # (K,)
 
             # Handle isolated nodes (row sums to 0): stay in place
@@ -935,18 +1004,32 @@ class DynamicTopologyKernel:
             isolated = row_sums == 0
             next_nodes[isolated] = positions[isolated]
 
-            # Apply feedback for all agents — fully vectorized, no Python loop
             visited_features = self.topo.node_features[next_nodes]  # (K, F)
-            lam = self.feedback_rate
-            telemetries = (1.0 - lam) * telemetries + lam * visited_features
-            if self._feedback_noise > 0:
-                telemetries += np.random.randn(*telemetries.shape) * self._feedback_noise
-            # Re-normalize each agent's telemetry to the unit sphere
-            norms = np.linalg.norm(telemetries, axis=1, keepdims=True)
-            telemetries = np.where(norms > 0, telemetries / norms, telemetries)
+            if self._custom_feedback:
+                # A user-supplied feedback_fn must be honored in batch mode
+                # too; it owns its noise/normalization, same contract as
+                # step(). Per-agent call — correctness over vectorization.
+                for k in range(K):
+                    telemetries[k] = self._feedback_fn(
+                        telemetries[k], visited_features[k]
+                    )
+            else:
+                # Default feedback — fully vectorized EMA + noise + renorm
+                lam = self.feedback_rate
+                telemetries = (1.0 - lam) * telemetries + lam * visited_features
+                if self._feedback_noise > 0:
+                    telemetries += (
+                        self._draw_normal(telemetries.shape) * self._feedback_noise
+                    )
+                # Re-normalize each agent's telemetry to the unit sphere
+                norms = np.linalg.norm(telemetries, axis=1, keepdims=True)
+                telemetries = np.where(norms > 0, telemetries / norms, telemetries)
 
             positions = next_nodes
             paths[:, s + 1] = positions
+
+            # Sponsorship decay is time semantics: once per step, not per agent
+            self.tick_decay()
 
         return paths
 
@@ -1063,6 +1146,7 @@ class DynamicTopologyKernel:
         exp3_gamma: float = 0.10,
         exp3_eta: float = 0.20,
         exp3_weight_cap: float = 1e50,
+        exp3_ix: Optional[float] = None,
     ) -> None:
         """
         Configure opt-in DTE-native edge learning.
@@ -1072,6 +1156,14 @@ class DynamicTopologyKernel:
         static : no edge-learning potential (default)
         ucb    : add learned reward and UCB optimism to admissible edges
         exp3   : multiplicative adversarial edge weighting, arbitrated only
+
+        The exp3 gain estimator is importance-weighted with implicit
+        exploration (EXP3-IX): gain = r / (p_hat + exp3_ix) on traffic
+        support, where p_hat is the realized per-source selection
+        frequency. exp3_ix defaults to exp3_eta / 2 (Neu 2015). Weights
+        are renormalized per source row after every update (softmax over
+        log-weights is shift-invariant), so exp3_weight_cap is inert and
+        retained only for API compatibility.
         """
         modes = ("static", "ucb", "exp3")
         if mode not in modes:
@@ -1103,6 +1195,8 @@ class DynamicTopologyKernel:
         }.items():
             if not np.isfinite(value) or value < 0:
                 raise ValueError(f"{name} must be finite and non-negative")
+        if exp3_ix is not None and (not np.isfinite(exp3_ix) or exp3_ix < 0):
+            raise ValueError("exp3_ix must be finite and non-negative")
         if policy_mix_min > policy_mix_max:
             raise ValueError("policy_mix_min must be <= policy_mix_max")
         if policy_reliability_floor > 1.0:
@@ -1160,6 +1254,7 @@ class DynamicTopologyKernel:
             "exp3_gamma": float(exp3_gamma),
             "exp3_eta": float(exp3_eta),
             "exp3_weight_cap": float(exp3_weight_cap),
+            "exp3_ix": float(exp3_ix) if exp3_ix is not None else float(exp3_eta) / 2.0,
         }
         base_reward = np.where(
             self.topo.adjacency_mask,
@@ -1184,6 +1279,50 @@ class DynamicTopologyKernel:
                 base_weight,
                 (K, N, N),
             ).copy()
+
+    def _exp3_weight_update(
+        self,
+        weight_view: np.ndarray,
+        realized: np.ndarray,
+        traffic: np.ndarray,
+    ) -> np.ndarray:
+        """
+        EXP3-IX multiplicative weight update from realized population traffic.
+
+        The gain estimator is importance-weighted with implicit exploration:
+            gain_ij = realized_ij / (p_hat_ij + ix)   on traffic support,
+        where p_hat_ij = traffic_ij / sum_k traffic_ik is the realized
+        selection frequency out of source i. Dividing (rather than
+        multiplying) by the selection probability keeps the estimator
+        unbiased up to the IX smoothing term: a high-reward, rarely-taken
+        edge is not throttled by its own unpopularity, so the lane cannot
+        reproduce the deadly-familiarity lock-in it exists to mitigate.
+
+        After the multiplicative update every source row is renormalized by
+        its maximum weight. softmax over log-weights is invariant to this
+        rescaling, and it prevents unbounded weight growth (which would
+        otherwise saturate exp3_weight_cap and collapse learned gaps).
+        """
+        ix = self._edge_learning["exp3_ix"]
+        row_mass = traffic.sum(axis=1, keepdims=True)
+        p_hat = np.where(
+            row_mass > 0,
+            traffic / np.maximum(row_mass, 1e-12),
+            0.0,
+        )
+        gain = np.where(traffic > 0, realized / (p_hat + ix), 0.0)
+        weight_next = weight_view * np.exp(self._edge_learning["exp3_eta"] * gain)
+        weight_next = np.where(
+            self.topo.adjacency_mask,
+            np.minimum(weight_next, self._edge_learning["exp3_weight_cap"]),
+            0.0,
+        )
+        row_max = np.max(weight_next, axis=1, keepdims=True)
+        return np.where(
+            self.topo.adjacency_mask,
+            weight_next / np.maximum(row_max, 1e-12),
+            0.0,
+        )
 
     def edge_learning_step(
         self,
@@ -1265,34 +1404,18 @@ class DynamicTopologyKernel:
             self._edge_visit_count[context_index] = new_count
             self._source_visit_count[context_index] += traffic.sum(axis=1)
             if self._edge_learning["mode"] == "exp3":
-                row_mass = np.maximum(traffic.sum(axis=1, keepdims=True), 1e-12)
-                scaled_gain = realized * traffic / row_mass
-                weight_next = weight_view * np.exp(
-                    self._edge_learning["exp3_eta"] * scaled_gain
+                self._edge_policy_weight[context_index] = self._exp3_weight_update(
+                    weight_view, realized, traffic
                 )
-                weight_next = np.where(
-                    self.topo.adjacency_mask,
-                    np.minimum(weight_next, self._edge_learning["exp3_weight_cap"]),
-                    0.0,
-                )
-                self._edge_policy_weight[context_index] = weight_next
             potential = self._edge_learning_potential(context_index=context_index)
         else:
             self._edge_reward_estimate = reward_next
             self._edge_visit_count = new_count
             self._source_visit_count += traffic.sum(axis=1)
             if self._edge_learning["mode"] == "exp3":
-                row_mass = np.maximum(traffic.sum(axis=1, keepdims=True), 1e-12)
-                scaled_gain = realized * traffic / row_mass
-                weight_next = weight_view * np.exp(
-                    self._edge_learning["exp3_eta"] * scaled_gain
+                self._edge_policy_weight = self._exp3_weight_update(
+                    weight_view, realized, traffic
                 )
-                weight_next = np.where(
-                    self.topo.adjacency_mask,
-                    np.minimum(weight_next, self._edge_learning["exp3_weight_cap"]),
-                    0.0,
-                )
-                self._edge_policy_weight = weight_next
             potential = self._edge_learning_potential()
         return {
             "mode": self._edge_learning["mode"],
@@ -1651,7 +1774,7 @@ class DynamicTopologyKernel:
 
         # Entropy injection: prevent fixed-point convergence
         if self._feedback_noise > 0:
-            noise = np.random.randn(len(new_t)) * self._feedback_noise
+            noise = self._draw_normal((len(new_t),)) * self._feedback_noise
             new_t += noise
 
         # Re-normalize to unit sphere
@@ -1702,10 +1825,8 @@ class DynamicTopologyKernel:
             Entropy in bits for each source node's transition distribution.
         """
         P = self.transition_matrix(telemetry)
-        H = np.zeros(self.topo.N)
-        for i in range(self.topo.N):
-            H[i] = self.row_entropy(P[i])
-        return H
+        plogp = np.where(P > 0, P * np.log2(np.where(P > 0, P, 1.0)), 0.0)
+        return -plogp.sum(axis=1)
 
     def effective_rank(self, telemetry: np.ndarray) -> np.ndarray:
         """
@@ -1720,30 +1841,65 @@ class DynamicTopologyKernel:
         H = self.transition_entropy(telemetry)
         return np.power(2.0, H)
 
-    def mixing_time_estimate(self, telemetry: np.ndarray) -> float:
+    def mixing_time_estimate(
+        self,
+        telemetry: np.ndarray,
+        method: str = "tv",
+        threshold: float = 0.25,
+        horizon: int = 2000,
+    ) -> float:
         """
-        Estimate the mixing time of the Markov chain for the given
-        telemetry, based on the spectral gap.
+        Estimate the mixing time of the frozen-telemetry Markov chain.
 
-        mixing_time ~ 1 / (1 - |lambda_2|)
+        method="tv" (default)
+            Exact total-variation decay from the worst-case deterministic
+            start:  t_mix = min{ t : max_i TV(P^t(i, .), pi) <= threshold }.
+            Valid for non-reversible chains — which these generally are:
+            flow_diagnostic measures nonzero irreversible edge current on
+            the same matrices. Returns inf if the threshold is not reached
+            within `horizon` steps; genuinely periodic or reducible chains
+            do not converge in TV, and inf is the honest answer for the
+            raw (non-lazy) chain.
 
-        Where lambda_2 is the second-largest eigenvalue magnitude of P.
-        Smaller spectral gap = slower mixing = more trapping.
+        method="spectral"
+            Legacy heuristic 1 / (1 - |lambda_2|). This is a rigorous
+            relaxation-time bound only for REVERSIBLE chains; for
+            non-normal P it ignores transient amplification, and on
+            periodic structure it conflates periodicity with trapping.
+            Retained for comparability with earlier design-space sweeps.
+
+        Dangling rows are treated as absorbing self-states, mirroring
+        stationary_distribution.
         """
         P = self.transition_matrix(telemetry)
-        eigenvalues = np.linalg.eigvals(P)
-        mags = np.abs(eigenvalues)
-        mags_sorted = np.sort(mags)[::-1]
+        P = P.copy()
+        row_sums = P.sum(axis=1)
+        dangling = row_sums < 1e-12
+        if np.any(dangling):
+            P[dangling, :] = 0.0
+            P[dangling, dangling] = 1.0
 
-        if len(mags_sorted) < 2:
-            return np.inf
+        if method == "spectral":
+            eigenvalues = np.linalg.eigvals(P)
+            mags_sorted = np.sort(np.abs(eigenvalues))[::-1]
+            if len(mags_sorted) < 2:
+                return np.inf
+            spectral_gap = 1.0 - mags_sorted[1]
+            if spectral_gap < 1e-12:
+                return np.inf
+            return 1.0 / spectral_gap
 
-        lambda_2 = mags_sorted[1]
-        spectral_gap = 1.0 - lambda_2
+        if method != "tv":
+            raise ValueError(f"method must be 'tv' or 'spectral'. Got {method!r}")
 
-        if spectral_gap < 1e-12:
-            return np.inf
-        return 1.0 / spectral_gap
+        pi = self.stationary_distribution(telemetry)
+        M = P.copy()
+        for t in range(1, int(horizon) + 1):
+            tv_worst = 0.5 * np.max(np.abs(M - pi[np.newaxis, :]).sum(axis=1))
+            if tv_worst <= threshold:
+                return float(t)
+            M = M @ P
+        return np.inf
 
     def stationary_distribution(
         self,
@@ -1825,6 +1981,124 @@ class DynamicTopologyKernel:
         if total <= 0:
             return self.stationary_distribution(telemetry)
         return pi / total
+
+    # -------------------------------------------------------------------
+    # Intervention leverage field — the continuous form of the
+    # choice-point principle (Proposition 1 is the P_ij -> 1 limit)
+    # -------------------------------------------------------------------
+
+    def _softmax_lane(
+        self, telemetry: np.ndarray, step: Optional[int] = None
+    ) -> tuple[np.ndarray, np.ndarray, float]:
+        """
+        Recompute the pure softmax lane (pre-arbitration) and return
+        (P, W_prefloor, tau). Mirrors transition_matrix steps 1-6 without
+        the edge-learning arbitration blend, which is what the analytic
+        leverage formulas describe.
+        """
+        F_mat = self.topo.node_features
+        D = self.topo.distance_matrix
+        alignment = F_mat @ telemetry + self._node_bias
+        W = (self.alpha * D) - (self._beta * alignment[np.newaxis, :]) - self._sponsor_friction
+        if self._edge_learning is not None and not self._edge_learning_uses_arbitration():
+            W = W - self._edge_learning_potential(telemetry=telemetry)
+        W_floored = self._soft_floor(W)
+        tau = self._resolve_temperature(step)
+        neg_W = (-W_floored / tau) + self._neg_inf_mask
+        row_max = np.max(neg_W, axis=1, keepdims=True)
+        row_max = np.where(np.isfinite(row_max), row_max, 0.0)
+        exp_W = np.exp(neg_W - row_max)
+        row_sums = np.sum(exp_W, axis=1, keepdims=True)
+        row_sums = np.where(row_sums > 0, row_sums, 1.0)
+        return exp_W / row_sums, W, tau
+
+    def edge_leverage(
+        self, telemetry: np.ndarray, step: Optional[int] = None
+    ) -> np.ndarray:
+        """
+        First-order sensitivity of each admissible transition to its own
+        friction intervention:
+
+            L_ij = dP_ij / dS_ij
+                 = sigma(k (W_ij - floor)) * P_ij (1 - P_ij) / tau
+
+        P_ij(1-P_ij) is the Bernoulli variance of the edge under softmax;
+        the sigmoid factor is the softplus floor gate (below the floor,
+        further sponsorship has vanishing effect — dropping this factor
+        overestimates leverage on heavily sponsored edges by orders of
+        magnitude). The choice-point invariance proposition is the
+        P_ij -> 1 limit, where L_ij -> 0: an intervention on the only
+        admissible edge cannot move the next-state distribution.
+
+        This is a FROZEN-TELEMETRY object: it screens where interventions
+        can act at the current preference state. It does not account for
+        agent adaptation, downstream feasibility gates, or the arbitration
+        mix when edge learning is active (which scales realized sensitivity
+        by 1 - mix). Use it to predict and prioritize; confirm with paired
+        adaptive simulation.
+
+        Returns
+        -------
+        L : np.ndarray, shape (N, N)
+            dP_ij/dS_ij on admissible edges, 0 elsewhere. Non-negative:
+            sponsoring an edge never lowers its own probability.
+        """
+        telemetry = np.asarray(telemetry, dtype=np.float64)
+        P, W, tau = self._softmax_lane(telemetry, step=step)
+        gate = 1.0 / (
+            1.0 + np.exp(-self._floor_sharpness * (W - self._weight_floor))
+        )
+        leverage = gate * P * (1.0 - P) / tau
+        return np.where(self.topo.adjacency_mask, leverage, 0.0)
+
+    def stationary_leverage(
+        self, telemetry: np.ndarray, step: Optional[int] = None
+    ) -> np.ndarray:
+        """
+        Sensitivity of the stationary distribution to each admissible
+        friction intervention, via Schweitzer's perturbation formula.
+
+        With Z = (I - P + 1 pi^T)^(-1) the fundamental matrix,
+        dpi^T = pi^T dP Z. A perturbation of S_ij changes only row i:
+
+            dP_ik/dS_ij = sigma_ij P_ij (delta_jk - P_ik) / tau
+
+        so
+
+            dpi/dS_ij = pi_i sigma_ij P_ij (Z_j: - (P Z)_i:) / tau.
+
+        Returns
+        -------
+        G : np.ndarray, shape (N, N, N)
+            G[i, j, :] = d pi / d S_ij for admissible (i, j), else 0.
+            Each G[i, j, :] sums to ~0 (pi stays normalized).
+
+        Same frozen-telemetry caveat as edge_leverage; additionally
+        inherits the stationary estimator's treatment of dangling rows
+        (absorbing-self) on reducible topologies.
+        """
+        telemetry = np.asarray(telemetry, dtype=np.float64)
+        P, W, tau = self._softmax_lane(telemetry, step=step)
+        P_chain = P.copy()
+        row_sums = P_chain.sum(axis=1)
+        dangling = row_sums < 1e-12
+        if np.any(dangling):
+            P_chain[dangling, :] = 0.0
+            P_chain[dangling, dangling] = 1.0
+        pi = self.stationary_distribution(telemetry)
+        n = self.topo.N
+        Z = np.linalg.inv(np.eye(n) - P_chain + np.outer(np.ones(n), pi))
+        PZ = P_chain @ Z
+        gate = 1.0 / (
+            1.0 + np.exp(-self._floor_sharpness * (W - self._weight_floor))
+        )
+        # coef[i, j] = pi_i * sigma_ij * P_ij / tau
+        coef = pi[:, np.newaxis] * gate * P * (1.0 / tau)  # (N, N)
+        coef = np.where(self.topo.adjacency_mask, coef, 0.0)
+        G = coef[:, :, np.newaxis] * (
+            Z[np.newaxis, :, :] - PZ[:, np.newaxis, :]
+        )
+        return np.where(self.topo.adjacency_mask[:, :, np.newaxis], G, 0.0)
 
     def flow_diagnostic(
         self,
