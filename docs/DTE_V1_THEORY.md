@@ -11,54 +11,46 @@ kernel now means, what is first-class API, and what remains outside V1.
 DTE is a kernel for adaptive circulation under layered memory. Its distinctive
 object is not shortest-path routing, but the interaction among:
 
-```text
-M_s(t): structural memory   topology, gates, contracts, feasible edges
-M_p(t): preference memory   beta and friction deltas over edges
-M_x(t): state memory        agent telemetry / intent / role
-R_t:    ecology             realized reward, capacity, stock, hazard, demand
-```
+- $M_s(t)$: structural memory, including topology, gates, contracts, and feasible edges.
+- $M_p(t)$: preference memory, including $\beta$ and friction deltas over edges.
+- $M_x(t)$: state memory, including agent telemetry, intent, or role.
+- $R_t$: ecology variables, including realized reward, capacity, stock, hazard, and demand.
 
 The V1 failure mode is memory-ecology mismatch:
 
-```text
-M_p persists after R_t changes, so circulation follows a once-valid path
+$M_p$ persists after $R_t$ changes, so circulation follows a once-valid path
 that is no longer locally best.
-```
 
 The V1 mitigation is adaptive forgetting:
 
-```text
-eta_t increases when realized reward falls below expectation or when chosen
+$\eta_t$ increases when realized reward falls below expectation or when chosen
 traffic incurs local opportunity cost.
-```
 
 ## Formal Object
 
 For V1, treat DTE as a controlled adaptive process on the augmented state:
 
-```text
+$$
 Z_t = (X_t, A_t, M_s(t), M_p(t), B_t, R_t)
-```
+$$
 
 where:
 
-```text
-X_t: discrete agent position or population occupancy
-A_t: agent telemetry / state-memory distribution
-M_s(t): structural memory, including topology, capacities, gates, contracts
-M_p(t): preference memory, including beta, friction deltas, and policy lanes
-B_t: delayed-feedback buffers and pending attribution records
-R_t: realized ecology, including reward, demand, capacity, stock, hazard
-```
+- $X_t$: discrete agent position or population occupancy.
+- $A_t$: agent telemetry or state-memory distribution.
+- $M_s(t)$: structural memory, including topology, capacities, gates, and contracts.
+- $M_p(t)$: preference memory, including $\beta$, friction deltas, and policy lanes.
+- $B_t$: delayed-feedback buffers and pending attribution records.
+- $R_t$: realized ecology, including reward, demand, capacity, stock, and hazard.
 
 The one-step transition has the form:
 
-```text
-Pr[Z_{t+1} | Z_t, u_t]
-    = K_move(P(M_s, M_p, A_t, R_t, u_t))
-      K_state(A_{t+1} | A_t, X_{t+1})
-      K_memory(M_s(t+1), M_p(t+1), B_{t+1}, R_{t+1} | Z_t, X_{t+1})
-```
+$$
+\Pr[Z_{t+1}\mid Z_t,u_t]
+= K_{\mathrm{move}}(P(M_s,M_p,A_t,R_t,u_t))
+  K_{\mathrm{state}}(A_{t+1}\mid A_t,X_{t+1})
+  K_{\mathrm{memory}}(M_s(t+1),M_p(t+1),B_{t+1},R_{t+1}\mid Z_t,X_{t+1})
+$$
 
 The kernel's distinctive claim is not that this factorization is unique. The
 claim is that position, state memory, preference memory, structural memory, and
@@ -98,28 +90,27 @@ friction reduction, or alignment. This is the paper's structural invariance
 result and explains why downstream serial-corridor interventions can be
 dynamically inert until a genuine alternative is created.
 
-### Proposition 3: Attribution Fragility Of Multiplicative Policy Lanes
+### Proposition 3: Estimator Bias In Traffic-Weighted Multiplicative Policy Lanes
 
 Consider an EXP3-style policy lane whose weights update multiplicatively from
-delayed rewards assigned to observed context labels. If observed labels differ
-from true reward contexts with nonzero probability, then expected log-weight
-growth can favor an action in the wrong context whenever the misattributed
-reward advantage exceeds the true-context advantage.
+delayed rewards assigned to realized traffic. If the gain estimator multiplies
+reward by realized selection frequency, high-reward low-traffic edges are
+discounted by their own current unpopularity. This can recreate stale
+familiarity inside the learning lane itself. An importance-weighted EXP3-IX
+estimator removes this traffic-weighted bias.
 
 Proof sketch. EXP3 updates are additive in log-space:
 
-```text
-log w_{c,a}(t+1) = log w_{c,a}(t) + eta * r_hat(c,a,t).
-```
+$$
+\log w_{c,a}(t+1)=\log w_{c,a}(t)+\eta\,\hat r(c,a,t).
+$$
 
-With label noise, the estimator for context `c` is a mixture of true rewards
-from `c` and rewards from other contexts. A wrong action becomes reinforced
-when the mixture expectation for that action exceeds the expectation of the
-correct action under the true context. Because the update is multiplicative in
-weight space, persistent misattribution compounds rather than merely averaging
-out over short horizons. This explains why DTE-EXP3 improves under isolated
-switching rewards but becomes brittle in the default corrupted/delayed hard
-benchmark.
+With the biased estimator, $\hat r$ is proportional to reward times realized
+traffic share. The update therefore punishes sparse edges even when their
+counterfactual reward is high. The corrected EXP3-IX lane instead estimates
+edge gain as reward divided by the realized selection probability plus implicit
+exploration, so the hard-regime deficit in the earlier benchmark is treated as
+estimator bias rather than intrinsic attribution fragility.
 
 ### Proposition 4: Arbitration Boundary
 
@@ -132,11 +123,11 @@ Proof sketch. A full policy owner chooses directly from its learned action
 distribution. An arbitrated DTE lane mixes the learned distribution with a
 topology-memory governor:
 
-```text
-P = (1 - lambda_t) P_DTE + lambda_t P_policy.
-```
+$$
+P = (1-\lambda_t)P_{\mathrm{DTE}}+\lambda_t P_{\mathrm{policy}}.
+$$
 
-Unless `lambda_t = 1`, the arbitrated policy is constrained by DTE's existing
+Unless $\lambda_t=1$, the arbitrated policy is constrained by DTE's existing
 memory and topology pressure. This constraint is useful when those pressures
 encode real system dynamics, but it is a liability on a clean bandit benchmark
 where independent action choice is the whole problem.
@@ -161,34 +152,41 @@ their loop maps to this contract.
 
 The kernel default remains static:
 
-```text
-M_p(t+1) = M_p(t)
-```
+$$
+M_p(t+1)=M_p(t)
+$$
 
 Nonstationary experiments may opt in to:
 
-```text
-traffic:
-delta_ij(t+1) = (1 - eta) delta_ij(t) + rho traffic_ij(t)
+Traffic-only update:
 
-reward_gated:
-delta_ij(t+1) = (1 - eta) delta_ij(t) + rho traffic_ij(t) R_j(t)
+$$
+\delta_{ij}(t+1)=(1-\eta)\delta_{ij}(t)+\rho\,\mathrm{traffic}_{ij}(t)
+$$
 
-adaptive_eta:
-delta_ij(t+1) = (1 - eta_j(t)) delta_ij(t) + rho traffic_ij(t) R_j(t)
-```
+Reward-gated update:
+
+$$
+\delta_{ij}(t+1)=(1-\eta)\delta_{ij}(t)+\rho\,\mathrm{traffic}_{ij}(t)R_j(t)
+$$
+
+Adaptive-$\eta$ update:
+
+$$
+\delta_{ij}(t+1)=(1-\eta_j(t))\delta_{ij}(t)+\rho\,\mathrm{traffic}_{ij}(t)R_j(t)
+$$
 
 with:
 
-```text
-eta_j(t) = clip(
-    eta
-    + surprise_gain * traffic_share_j * max(0, Rhat_j(t) - R_j(t))
-    + opportunity_gain * destination_regret_j(t),
-    eta,
-    eta_max
-)
-```
+$$
+\eta_j(t)=\operatorname{clip}\left(
+\eta
++ g_s\,\mathrm{traffic\_share}_j\,\max(0,\hat R_j(t)-R_j(t))
++ g_o\,\mathrm{destination\_regret}_j(t),
+\eta,
+\eta_{\max}
+\right)
+$$
 
 Only admissible edges may accumulate preference memory. Non-edge traffic is
 masked out by the kernel.
@@ -197,9 +195,9 @@ masked out by the kernel.
 
 Surprise detects collapse:
 
-```text
-R_j(t) < Rhat_j(t)
-```
+$$
+R_j(t)<\hat R_j(t)
+$$
 
 But the design-space experiments exposed a harder regime: marginal stale
 grazing. A route may remain mildly productive and therefore generate little
@@ -207,16 +205,19 @@ surprise while still being worse than a reachable alternative.
 
 V1 therefore adds local opportunity cost:
 
-```text
-regret_ij(t) = max(0, max_{k in Out(i)} R_k(t) - R_j(t))
-```
+$$
+\mathrm{regret}_{ij}(t)=
+\max\left(0,\max_{k\in\operatorname{Out}(i)}R_k(t)-R_j(t)\right)
+$$
 
 and destination-level regret:
 
-```text
-destination_regret_j(t)
-    = sum_i traffic_ij(t) regret_ij(t) / sum_{i,k} traffic_ik(t)
-```
+$$
+\mathrm{destination\_regret}_j(t)
+=
+\frac{\sum_i \mathrm{traffic}_{ij}(t)\,\mathrm{regret}_{ij}(t)}
+{\sum_{i,k}\mathrm{traffic}_{ik}(t)}
+$$
 
 This is not a full counterfactual planner. It is a local diagnostic for stale
 preference memory: "traffic is still flowing here, but a better reachable

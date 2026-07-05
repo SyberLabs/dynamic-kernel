@@ -20,8 +20,8 @@ Benchmark comparisons show that a static expected-flow model predicts majority d
 A separate Neural V2 adaptive-routing benchmark tests the same kernel as a
 controlled decision system rather than a supply-chain case study. Across 30
 paired seeds, DTE-native EXP3 with an importance-weighted (EXP3-IX) gain
-estimator improves over local-regret DTE in clean, corrupted-delayed-
-attribution, and adversarial-switching regimes, and is the strongest
+estimator improves over local-regret DTE in clean, corrupted delayed-attribution,
+and adversarial-switching regimes, and is the strongest
 DTE-native lane under corrupted attribution. An earlier version of this lane
 multiplied rewards by realized selection frequency instead of importance
 weighting; it appeared brittle under corrupted attribution, and that
@@ -77,28 +77,28 @@ This paper does not claim that DTE replaces inventory optimization, discrete-eve
 
 ### 2.1 Graph, features, and agent telemetry
 
-Let \(G=(V,E)\) be a directed graph with \(|V|=N\). Each node \(j\in V\) has a feature vector \(N_j\in\mathbb{R}^F\), and each directed edge \((i,j)\in E\) has a base traversal cost \(D_{ij}>0\). Non-edges are represented by \(D_{ij}=\infty\).
+Let $G=(V,E)$ be a directed graph with $|V|=N$. Each node $j\in V$ has a feature vector $N_j\in\mathbb{R}^F$, and each directed edge $(i,j)\in E$ has a base traversal cost $D_{ij}>0$. Non-edges are represented by $D_{ij}=\infty$.
 
-An agent at time \(t\) has:
+An agent at time $t$ has:
 
-- position \(X_t\in V\),
-- telemetry \(a_t\in\mathbb{R}^F\), normalized to the unit sphere after each update.
+- position $X_t\in V$,
+- telemetry $a_t\in\mathbb{R}^F$, normalized to the unit sphere after each update.
 
 Telemetry represents the agent's current state or intent. Its interpretation is domain dependent: demand urgency in a supply chain, interest state in a recommendation system, or preference state in an abstract routing process.
 
 ### 2.2 Dynamic weights and transition probabilities
 
-The alignment of telemetry \(a_t\) with destination node \(j\) is
+The alignment of telemetry $a_t$ with destination node $j$ is
 
-\[
+$$
 A_j(a_t)=\langle a_t,N_j\rangle+b_j,
-\]
+$$
 
-where \(b_j\) is a node-specific bias.
+where $b_j$ is a node-specific bias.
 
 The dynamic edge weight is
 
-\[
+$$
 W_{ij}(a_t)
 =
 \alpha D_{ij}
@@ -106,51 +106,51 @@ W_{ij}(a_t)
 \beta_{ij}A_j(a_t)
 -
 S_{ij},
-\]
+$$
 
 where:
 
-- \(\alpha>0\) scales physical friction,
-- \(\beta_{ij}\) is an alignment-coupled edge preference,
-- \(S_{ij}\) is an alignment-independent friction reduction.
+- $\alpha>0$ scales physical friction,
+- $\beta_{ij}$ is an alignment-coupled edge preference,
+- $S_{ij}$ is an alignment-independent friction reduction.
 
 The transition matrix is a row-wise softmax over negative weights:
 
-\[
+$$
 P_{ij}(a_t)
 =
 \frac{\exp(-W_{ij}(a_t)/\tau)}
 {\sum_{k:(i,k)\in E}\exp(-W_{ik}(a_t)/\tau)}
 \quad \text{for } (i,j)\in E,
-\]
+$$
 
-with \(P_{ij}=0\) for non-edges. The temperature \(\tau>0\) controls exploration relative to greedy route selection.
+with $P_{ij}=0$ for non-edges. The temperature $\tau>0$ controls exploration relative to greedy route selection.
 
 ### 2.3 Telemetry feedback
 
-After the agent visits node \(j^*=X_{t+1}\), telemetry updates by
+After the agent visits node $j^*=X_{t+1}$, telemetry updates by
 
-\[
+$$
 a_{t+1}
 =
 \operatorname{norm}
 \left(
 (1-\lambda)a_t+\lambda N_{j^*}+\varepsilon_t
 \right),
-\]
+$$
 
-where \(\lambda\in[0,1]\) is the feedback rate, \(\varepsilon_t\) is optional noise, and \(\operatorname{norm}\) projects the vector to unit norm.
+where $\lambda\in[0,1]$ is the feedback rate, $\varepsilon_t$ is optional noise, and $\operatorname{norm}$ projects the vector to unit norm.
 
-When \(\lambda=0\), each agent follows a time-homogeneous Markov chain conditional on its initial telemetry. When \(\lambda>0\), the position process alone is non-stationary because route history changes future transition probabilities. The joint process \((X_t,a_t)\) remains Markov.
+When $\lambda=0$, each agent follows a time-homogeneous Markov chain conditional on its initial telemetry. When $\lambda>0$, the position process alone is non-stationary because route history changes future transition probabilities. The joint process $(X_t,a_t)$ remains Markov.
 
 ### 2.4 Intervention channels
 
 DTE separates two intervention primitives:
 
-1. **Alignment-coupled preference** through \(\beta_{ij}\).  
+1. **Alignment-coupled preference** through $\beta_{ij}$.
    This changes how strongly a route attracts agents whose telemetry aligns with the destination.
 
-2. **Alignment-independent friction** through \(S_{ij}\).  
+2. **Alignment-independent friction** through $S_{ij}$.
    This changes traversal cost for all agents using the edge.
 
 This distinction matters because the same nominal budget can have different effects across heterogeneous agents and different locations in the topology.
@@ -159,7 +159,7 @@ Both channels act on the weight matrix before a softplus floor is applied, and
 this makes intervention effect size nonlinear in a documented way. Because the
 floor precedes the row softmax, it breaks softmax shift-invariance: the
 derivative of the floored weight with respect to the raw weight is
-\(\sigma(k\,(W_{ij}-f))\), so the marginal effect of additional sponsorship
+$\sigma(k\,(W_{ij}-f))$, so the marginal effect of additional sponsorship
 decays smoothly to zero once an edge is pushed below the floor. Sponsorship
 therefore has intentional diminishing returns rather than unbounded linear
 effect. Any first-order sensitivity analysis of DTE interventions must include
@@ -188,22 +188,22 @@ following table fixes the evidentiary role of each major claim.
 
 Let the augmented DTE state be
 
-\[
+$$
 Z_t=(X_t,A_t,M_s(t),M_p(t),B_t,R_t),
-\]
+$$
 
-where \(X_t\) is position or occupancy, \(A_t\) is telemetry state memory,
-\(M_s(t)\) is structural memory, \(M_p(t)\) is preference memory, \(B_t\) is
-the delayed-feedback buffer, and \(R_t\) contains ecology variables used by the
+where $X_t$ is position or occupancy, $A_t$ is telemetry state memory,
+$M_s(t)$ is structural memory, $M_p(t)$ is preference memory, $B_t$ is
+the delayed-feedback buffer, and $R_t$ contains ecology variables used by the
 update rules. If movement, telemetry update, memory update, and delayed
-attribution consume only \(Z_t\), the control \(u_t\), and fresh randomness,
-then \(\{Z_t\}\) is Markov. Projections such as \(\{X_t\}\) alone are generally
+attribution consume only $Z_t$, the control $u_t$, and fresh randomness,
+then $\{Z_t\}$ is Markov. Projections such as $\{X_t\}$ alone are generally
 not Markov when feedback rate or reward delay is nonzero.
 
-Proof sketch. Conditional on \(Z_t\), the transition matrix is determined by
+Proof sketch. Conditional on $Z_t$, the transition matrix is determined by
 current topology, edge controls, telemetry, preference memory, and ecology
 variables. Telemetry and memory updates depend on the realized transition,
-current rewards, and pending records in \(B_t\). Thus no earlier history is
+current rewards, and pending records in $B_t$. Thus no earlier history is
 needed once these variables are included. If telemetry or delayed buffers are
 omitted, two histories with identical visible position can produce different
 alignment scores or future memory updates, so the projected process need not be
@@ -215,27 +215,27 @@ Markov.
 
 ### Proposition 1: Singleton-outdegree intervention invariance
 
-Let node \(i\) have exactly one admissible outgoing neighbor \(j\). For any finite edge weight \(W_{ij}\) and any temperature \(\tau>0\),
+Let node $i$ have exactly one admissible outgoing neighbor $j$. For any finite edge weight $W_{ij}$ and any temperature $\tau>0$,
 
-\[
+$$
 P_{ij}=1.
-\]
+$$
 
-Therefore, any finite intervention that changes only \(D_{ij}\), \(\beta_{ij}\), \(S_{ij}\), or the destination alignment term leaves the next-state distribution from node \(i\) unchanged.
+Therefore, any finite intervention that changes only $D_{ij}$, $\beta_{ij}$, $S_{ij}$, or the destination alignment term leaves the next-state distribution from node $i$ unchanged.
 
 ### Proof
 
-Since \(j\) is the only admissible outgoing neighbor of \(i\), the softmax denominator contains one term:
+Since $j$ is the only admissible outgoing neighbor of $i$, the softmax denominator contains one term:
 
-\[
+$$
 P_{ij}
 =
 \frac{\exp(-W_{ij}/\tau)}
 {\exp(-W_{ij}/\tau)}
 =1.
-\]
+$$
 
-No finite modification of \(W_{ij}\) changes this ratio. \(\square\)
+No finite modification of $W_{ij}$ changes this ratio. $\square$
 
 ### Corollary 1: Serial-corridor cost changes cannot reroute flow
 
@@ -291,12 +291,12 @@ Each agent can complete at most one U.S. demand lot. Completed lots are attribut
 
 The principal allocation metric is
 
-\[
+$$
 \text{Onshore Share}
 =
 \frac{\text{Domestic Completed U.S. Lots}}
 {\text{Total Completed U.S. Lots}}.
-\]
+$$
 
 This avoids interpreting repeated circulation through a demand edge as repeated production.
 
@@ -304,28 +304,28 @@ This avoids interpreting repeated circulation through a demand edge as repeated 
 
 A policy cell is classified as a viable onshoring transition when:
 
-\[
+$$
 \text{Onshore Share}\geq \theta_{\text{share}},
-\]
+$$
 
-\[
+$$
 \text{Overflow}\leq \theta_{\text{overflow}},
-\]
+$$
 
-\[
+$$
 \text{Dependency Pressure}\leq \theta_{\text{dependency}},
-\]
+$$
 
-\[
+$$
 \text{Finished-Lot Ratio}\geq \theta_{\text{flow}}.
-\]
+$$
 
 The primary thresholds are:
 
-- \(\theta_{\text{share}}=0.50\),
-- \(\theta_{\text{overflow}}=0.10\),
-- \(\theta_{\text{dependency}}=0.65\),
-- \(\theta_{\text{flow}}=0.85\).
+- $\theta_{\text{share}}=0.50$,
+- $\theta_{\text{overflow}}=0.10$,
+- $\theta_{\text{dependency}}=0.65$,
+- $\theta_{\text{flow}}=0.85$.
 
 A cell is robust when at least two-thirds of seeds satisfy the viable-transition criterion. With five seeds, this requires at least four viable runs.
 
@@ -373,11 +373,11 @@ At 320 agents, the no-pull policy has a robust viable-transition rate of 40% and
 
 Import friction produces no observed change in mean onshore share:
 
-\[
+$$
 \max_{\text{tariff levels}}
 \Delta \text{Mean Onshore Share}
 =0.
-\]
+$$
 
 This is not evidence that tariffs are universally ineffective. In the modeled topology, the tariff friction is applied on serial offshore corridor edges after route commitment. Proposition 1 predicts that these cost changes cannot reroute flow.
 
@@ -442,15 +442,15 @@ The result demonstrates that an alternative is necessary for cost-based reroutin
 
 We swept telemetry feedback rate
 
-\[
+$$
 \lambda\in\{0.00,0.05,0.10,0.15,0.30,0.50\}
-\]
+$$
 
 with and without domestic procurement pull. Positive-pull viable rates are:
 
-\[
+$$
 100\%, 100\%, 60\%, 80\%, 60\%, 80\%.
-\]
+$$
 
 Feedback is non-monotone. The frozen-telemetry case is not dominated by every adaptive case. DTE feedback should therefore be described as a phase-shaping mechanism, not a universal amplifier.
 
@@ -479,7 +479,7 @@ The static baseline computes expected flow using one mean telemetry vector. It c
 
 ### 7.2 Frozen-telemetry heterogeneous-agent baseline
 
-The frozen-agent baseline preserves heterogeneous agents, bill-of-material gates, node and gate capacities, and stochastic routing, but sets \(\lambda=0\). It isolates the effect of telemetry adaptation.
+The frozen-agent baseline preserves heterogeneous agents, bill-of-material gates, node and gate capacities, and stochastic routing, but sets $\lambda=0$. It isolates the effect of telemetry adaptation.
 
 ### 7.3 Results
 
