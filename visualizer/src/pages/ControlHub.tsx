@@ -63,15 +63,15 @@ const TOPOLOGY_EXPLORERS: PortCard[] = [
 
 const STANDALONE_STUDIES: PortCard[] = [
   {
-    route: '/demo',
-    kicker: 'Portfolio',
-    title: 'Semiconductor Demo',
-    accent: '#34d399',
-    glow: 'rgba(52,211,153,0.2)',
+    route: '/neural',
+    kicker: 'Study',
+    title: 'Adaptive Router',
+    accent: '#9b6cf7',
+    glow: 'rgba(155,108,247,0.2)',
     body: (
       <>
-        Explore the strongest current evidence case: where policy budget changes routing, where
-        it fails, and why topology decides the feasible frontier.
+        Inspect a graph-based optimizer for adaptive routing. Watch transition memory,
+        stationary mass, entropy, and phase changes evolve on a live neural-style topology.
       </>
     ),
   },

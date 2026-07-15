@@ -59,14 +59,18 @@ Boundary: external UCB/EXP3 still win when they own the full policy
 
 ### Semiconductor Case Study
 
+These scripts remain as a paper-supporting case-study slice. Their markdown
+reports are generated on demand and are not part of the trimmed public docs
+surface.
+
 | Script | Purpose | Output | Report |
 |---|---|---|---|
 | `semiconductor_onshoring.py` | Base topology and simulation primitives | dependency for case-study scripts | source |
 | `semiconductor_onshoring_frontier.py` | Feasibility classification helper | dependency for case-study scripts | source |
-| `semiconductor_onshoring_feasibility_preference.py` | Feasibility-preference surface | `semiconductor_onshoring_feasibility_preference_output.json` | `SEMICONDUCTOR_ONSHORING_FEASIBILITY_PREFERENCE_REPORT.md` |
-| `semiconductor_onshoring_classification_robustness.py` | Threshold robustness | `semiconductor_onshoring_classification_robustness_output.json` | `SEMICONDUCTOR_ONSHORING_CLASSIFICATION_ROBUSTNESS_REPORT.md` |
-| `semiconductor_onshoring_model_benchmark.py` | Static/frozen/DTE comparison | `semiconductor_onshoring_model_benchmark_output.json` | `SEMICONDUCTOR_ONSHORING_MODEL_BENCHMARK_REPORT.md` |
-| `semiconductor_onshoring_falsification.py` | Choice-point relocation, topology surgery, feedback, nulls | `semiconductor_onshoring_falsification_output.json` | `SEMICONDUCTOR_ONSHORING_FALSIFICATION_REPORT.md` |
+| `semiconductor_onshoring_feasibility_preference.py` | Feasibility-preference surface | `semiconductor_onshoring_feasibility_preference_output.json` | generated locally |
+| `semiconductor_onshoring_classification_robustness.py` | Threshold robustness | `semiconductor_onshoring_classification_robustness_output.json` | generated locally |
+| `semiconductor_onshoring_model_benchmark.py` | Static/frozen/DTE comparison | `semiconductor_onshoring_model_benchmark_output.json` | generated locally |
+| `semiconductor_onshoring_falsification.py` | Choice-point relocation, topology surgery, feedback, nulls | `semiconductor_onshoring_falsification_output.json` | generated locally |
 | `leverage_screen.py` | Analytic predict-then-confirm screen for intervention liveness | `leverage_screen_output.json` | `LEVERAGE_SCREEN_REPORT.md` |
 
 ## Local Reproduction Commands

@@ -1,10 +1,8 @@
 import io
 import csv
 import asyncio
-import json
 import traceback
 from contextlib import asynccontextmanager
-from pathlib import Path
 from typing import List, Optional
 
 import numpy as np
@@ -29,8 +27,6 @@ from session import (
 # ---------------------------------------------------------------------------
 
 session_manager = SessionManager()
-_ROOT = Path(__file__).resolve().parent
-_DEMO_SEMICONDUCTOR_PATH = _ROOT / "semiconductor_onshoring_falsification_output.json"
 
 
 def _sync_default_globals() -> None:
@@ -47,24 +43,6 @@ def _get_session_id(request: Request) -> str:
         or request.cookies.get("session_id")
         or DEFAULT_SESSION_ID
     )
-
-
-def _load_semiconductor_demo_payload() -> dict:
-    if not _DEMO_SEMICONDUCTOR_PATH.exists():
-        raise HTTPException(404, detail="semiconductor demo artifact not found")
-    try:
-        with _DEMO_SEMICONDUCTOR_PATH.open("r", encoding="utf-8") as fh:
-            raw = json.load(fh)
-    except json.JSONDecodeError as exc:
-        raise HTTPException(500, detail=f"invalid semiconductor demo artifact: {exc}") from exc
-
-    return {
-        "config": raw.get("config", {}),
-        "summary": raw.get("summary", {}),
-        "choicePointRelocation": raw.get("choice_point_relocation", {}).get("grouped", []),
-        "topologySurgery": raw.get("topology_surgery", {}).get("grouped", []),
-        "feedbackContinuum": raw.get("feedback_continuum", {}).get("grouped", []),
-    }
 
 
 def _topology_payload(state: SessionState, status: str | None = None) -> dict:
@@ -414,11 +392,6 @@ def get_metrics_history(request: Request):
         "sessionId": state.session_id,
         "history": state.sim.get_metric_history(),
     }
-
-
-@app.get("/api/demo/semiconductor")
-def get_semiconductor_demo():
-    return _load_semiconductor_demo_payload()
 
 
 @app.post("/api/neural/load")

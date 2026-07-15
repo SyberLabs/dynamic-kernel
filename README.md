@@ -16,7 +16,7 @@ Dynamic Kernel is a Python simulation and API platform for studying non-stationa
 - Simulation infrastructure for graph routing, population movement, and domain-specific adapters.
 - Backend/frontend integration through FastAPI, WebSockets, and a React/Vite visualizer.
 - Research discipline through manifests, reports, falsification scripts, and scoped claim boundaries.
-- A self-contained semiconductor policy demo backed by a frozen experiment artifact.
+- A Hub-first visualizer where the kernel, population simulator, city comparison, and adaptive-router surfaces are immediately visible.
 - DTE-native policy-lane experiments, including the 2026-07-05 EXP3-IX estimator correction and archived pre-fix Neural V2 artifacts.
 
 ## Architecture
@@ -72,7 +72,7 @@ Run tests:
 python -m pytest tests/ -v
 ```
 
-Current public reproduction suite: `145 passed`.
+Current public reproduction suite: `144 passed`.
 
 Targeted DTE regression slice:
 
@@ -85,7 +85,7 @@ python -m pytest tests/test_review_fixes.py tests/test_neural_v2_router_benchmar
 - Core transition computation is vectorized in NumPy.
 - Includes multiple domain presets such as mall, airport, museum, and supply chain.
 - V1 experiment manifest maps claims to scripts, output artifacts, and required validation.
-- Semiconductor Policy Lab demo reads from `semiconductor_onshoring_falsification_output.json`.
+- Semiconductor onshoring remains a paper-supporting case-study slice, but it is no longer the primary public demo surface.
 - The DTE paper draft is in `docs/DTE_PAPER_DRAFT.md`.
 - Corrected Neural V2 post-fix artifacts are included at the repository root.
 - Superseded pre-fix EXP3 artifacts are preserved in `archive/pre_estimator_fix_neural_v2/` as an estimator-bias case study.
@@ -95,7 +95,7 @@ python -m pytest tests/test_review_fixes.py tests/test_neural_v2_router_benchmar
 
 - `kernel.py`, `simulator.py`: core DTE runtime.
 - `neural_v2_*.py`: policy-lane benchmark and seed validation.
-- `semiconductor_onshoring_*.py`: paper-facing semiconductor case-study slice.
+- `semiconductor_onshoring_*.py`: optional paper-supporting semiconductor case-study slice.
 - `docs/`: paper draft, theory note, experiment manifest, and generated reports.
 - `figures/` and `visualizer/public/figures/`: paper and visualizer SVG assets.
 - `tests/`: public reproduction suite.
