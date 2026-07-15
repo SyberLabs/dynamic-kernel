@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
+import { ControlSection, SliderField } from '../components/UIControls';
 
 interface DiagnosticState {
   alignment: number[];
@@ -58,7 +59,7 @@ export default function BaseSystem() {
   useEffect(() => {
     if (!topology || !activeIntent || !topology.intentPresets) return;
 
-    let tel = topology.intentPresets[activeIntent];
+    const tel = topology.intentPresets[activeIntent];
     if (!tel) return;
 
     const N = topology.labels.length;
@@ -163,14 +164,10 @@ export default function BaseSystem() {
     return { nodes, links };
   }, [topology, diagnostic, selectedNode]);
 
-  const sliderStyle = {
-    '--pct': `${((temperature - 0.01) / (5.0 - 0.01)) * 100}%`
-  } as React.CSSProperties;
-
   if (!topology || !diagnostic) return (
     <div className="loading-screen">
       <div className="loading-ring"/>
-      <span>Loading kernel...</span>
+      <span>Loading kernel inspector...</span>
     </div>
   );
 
@@ -181,8 +178,8 @@ export default function BaseSystem() {
       <aside className="sidebar">
         <div className="sidebar-brand" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
-            <h1>Dynamic Topology Engine</h1>
-            <p>Mathematical Kernel View</p>
+            <h1>Kernel Inspector</h1>
+            <p>Transition Matrix View</p>
           </div>
           <button
             onClick={() => window.open('/api/export?format=csv', '_blank')}
@@ -193,7 +190,7 @@ export default function BaseSystem() {
               textTransform: 'uppercase', letterSpacing: '0.04em'
             }}
           >
-            ↓ Export CSV
+            Export State
           </button>
         </div>
         <div className="stats-bar">
@@ -204,82 +201,84 @@ export default function BaseSystem() {
           <div className="stat-pill">
             <div className="label">Mixing Time</div>
             <div className="value amber">
-              {diagnostic.mixing_time < 0 ? '∞' : diagnostic.mixing_time.toFixed(0)}
+              {diagnostic.mixing_time < 0 ? 'inf' : diagnostic.mixing_time.toFixed(0)}
             </div>
           </div>
         </div>
         <div className="sidebar-content">
 
-          <section>
-            <div className="section-heading">Consumer Intent Profile</div>
+          <ControlSection title="Agent Intent">
             <div className="chip-row">
               {topology.intentPresets && Object.keys(topology.intentPresets).map(it => (
-                <div
+                <button
+                  type="button"
                   key={it}
                   className={`chip ${activeIntent === it ? 'active' : ''}`}
                   onClick={() => setActiveIntent(it)}
+                  aria-pressed={activeIntent === it}
                 >
                   {it}
-                </div>
+                </button>
               ))}
             </div>
-          </section>
+          </ControlSection>
 
-          <section>
-            <div className="section-heading">Exploration τ</div>
-            <div className="slider-group">
-              <input
-                type="range" min="0.01" max="5.0" step="0.01"
-                value={temperature}
-                style={sliderStyle}
-                onChange={e => setTemperature(parseFloat(e.target.value))}
-              />
-              <div className="slider-meta">
-                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Deterministic</span>
-                <span className="slider-badge">τ = {temperature.toFixed(2)}</span>
-                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Exploratory</span>
-              </div>
-            </div>
-          </section>
+          <ControlSection title="Exploration Tau">
+            <SliderField
+              label="Route softness"
+              min={0.01}
+              max={5}
+              step={0.01}
+              value={temperature}
+              valueLabel={`tau ${temperature.toFixed(2)}`}
+              minLabel="Deterministic"
+              maxLabel="Exploratory"
+              onChange={setTemperature}
+            />
+          </ControlSection>
 
-          <section>
-            <div className="section-heading">Sponsor Channel</div>
+          <ControlSection title="Intervention Channel">
             <div className="sponsor-cards">
-              <div
+              <button
+                type="button"
                 className={`sponsor-card ${sponsor === 'none' ? 'active-blue' : ''}`}
                 onClick={() => setSponsor('none')}
+                aria-pressed={sponsor === 'none'}
               >
                 <div className="sponsor-dot"/>
                 <div className="sponsor-text">
                   <strong>Baseline</strong>
                   <span>Topology only.</span>
                 </div>
-              </div>
-              <div
+              </button>
+              <button
+                type="button"
                 className={`sponsor-card ${sponsor === 'beta' ? 'active-purple' : ''}`}
                 onClick={() => setSponsor('beta')}
+                aria-pressed={sponsor === 'beta'}
               >
                 <div className="sponsor-dot"/>
                 <div className="sponsor-text">
-                  <strong>Relevance Bid (β)</strong>
+                  <strong>Preference Bias (beta)</strong>
                   <span>Alignment-coupled amplification.</span>
                 </div>
-              </div>
-              <div
+              </button>
+              <button
+                type="button"
                 className={`sponsor-card ${sponsor === 'friction' ? 'active-amber' : ''}`}
                 onClick={() => setSponsor('friction')}
+                aria-pressed={sponsor === 'friction'}
               >
                 <div className="sponsor-dot"/>
                 <div className="sponsor-text">
-                  <strong>Friction Bid (S)</strong>
+                  <strong>Friction Reduction</strong>
                   <span>Alignment-independent reduction.</span>
                 </div>
-              </div>
+              </button>
             </div>
-          </section>
+          </ControlSection>
 
-          <section>
-            <div className="section-heading">Node Alignment Scores</div>
+          <ControlSection title="Node Alignment">
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {topology.labels.map((label: string, i: number) => {
                 const align = diagnostic.alignment[i];
@@ -303,7 +302,7 @@ export default function BaseSystem() {
                 );
               })}
             </div>
-          </section>
+          </ControlSection>
 
           <div className="insight-box">
             Click any node to inspect its transition probabilities, entropy, and effective rank.
@@ -347,12 +346,14 @@ export default function BaseSystem() {
                 {selectedNode.name}
               </h3>
               <button
+                type="button"
+                aria-label="Close node inspector"
                 onClick={() => setSelectedNode(null)}
                 style={{
                   background: 'none', border: 'none', color: 'var(--text-muted)',
                   cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 0,
                 }}
-              >×</button>
+              >x</button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
+import { ControlSection, SliderField, StatusBanner } from '../components/UIControls';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -232,7 +233,7 @@ const MallPort: React.FC = () => {
     ctx.fillStyle = 'white';
     ctx.fillText(node.name, node.x, node.y - 12 / globalScale);
     ctx.fillStyle = count > 0 ? '#34d399' : '#7a82a0';
-    ctx.fillText(`👥 ${count}`, node.x, node.y + 6 / globalScale);
+    ctx.fillText(`${count}`, node.x, node.y + 6 / globalScale);
   }, [simState]);
 
   // ── Canvas: draw transit counts on edges ─────────────────────────────────
@@ -263,23 +264,21 @@ const MallPort: React.FC = () => {
       <div className="loading-screen">
         <div className="loading-ring"/>
         {wsError
-          ? <span style={{ color: '#f87171' }}>⚠️ Backend unreachable — is uvicorn running?</span>
-          : <span>Connecting to simulation engine...</span>
+          ? <span style={{ color: '#f87171' }}>Backend unreachable. Is uvicorn running?</span>
+          : <span>Connecting to agent flow simulator...</span>
         }
       </div>
     );
   }
 
-  const sliderStyle = { '--pct': `${((temperature - 0.01) / 5.0) * 100}%` } as React.CSSProperties;
-  const agentSliderStyle = { '--pct': `${((totalAgents - 10) / (5000 - 10)) * 100}%` } as React.CSSProperties;
   return (
     <div className="app-shell">
       {/* ── SIDEBAR ─────────────────────────────────────── */}
       <aside className="sidebar">
         <div className="sidebar-brand" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
-            <h1>Population Simulator</h1>
-            <p>Discrete Population Mechanics</p>
+            <h1>Agent Flow Simulator</h1>
+            <p>Discrete Agent Mechanics</p>
           </div>
           <button
             onClick={() => window.open('/api/export?format=csv', '_blank')}
@@ -290,60 +289,53 @@ const MallPort: React.FC = () => {
               textTransform: 'uppercase', letterSpacing: '0.04em'
             }}
           >
-            ↓ Export CSV
+            Export State
           </button>
         </div>
 
         {/* WS health indicator */}
         {wsError && (
-          <div style={{
-            margin: '0 0 12px', padding: '8px 12px', borderRadius: 8,
-            background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.3)',
-            fontSize: 11, color: '#f87171',
-          }}>
-            ⚠️ Stream disconnected. Reload to reconnect.
-          </div>
+          <StatusBanner tone="red">
+            Stream disconnected. Reload to reconnect.
+          </StatusBanner>
         )}
 
         {/* Global Stats */}
         <div className="stats-bar">
           <div className="stat-pill">
             <div className="label">Stationary</div>
-            <div className="value green">{simState?.active_stationary ?? '—'}</div>
+            <div className="value green">{simState?.active_stationary ?? '--'}</div>
           </div>
           <div className="stat-pill">
             <div className="label">In Transit</div>
-            <div className="value amber">{simState?.active_transit ?? '—'}</div>
+            <div className="value amber">{simState?.active_transit ?? '--'}</div>
           </div>
         </div>
 
         <div className="sidebar-content">
 
           {/* ── Agent Count ── */}
-          <section>
-            <div className="section-heading">Total Agents</div>
-            <div className="slider-group">
-              <input
-                type="range" min="10" max="5000" step="10"
-                value={totalAgents}
-                style={agentSliderStyle}
-                onChange={e => setTotalAgents(parseInt(e.target.value))}
-              />
-              <div className="slider-meta">
-                <span>Min</span>
-                <span className="slider-badge">{totalAgents.toLocaleString()} agents</span>
-                <span>Max</span>
-              </div>
-            </div>
-          </section>
+          <ControlSection title="Total Agents">
+            <SliderField
+              label="Active population"
+              min={10}
+              max={5000}
+              step={10}
+              value={totalAgents}
+              valueLabel={`${totalAgents.toLocaleString()} agents`}
+              minLabel="Min"
+              maxLabel="Max"
+              tone="green"
+              onChange={value => setTotalAgents(Math.round(value))}
+            />
+          </ControlSection>
 
           {/* ── Demographics ── */}
           {demoDist.length > 0 && (
-            <section>
-              <div className="section-heading">Consumer Demographics</div>
-              <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 12 }}>
-                Drag to adjust crowd intent profile. Auto-normalized to 100%.
-              </div>
+            <ControlSection
+              title="Agent Mix"
+              description="Drag to adjust the intent profile. Values auto-normalize to 100%."
+            >
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {demoDist.map((group, idx) => {
                   const pctStyle = { '--pct': `${group.pct * 100}%` } as React.CSSProperties;
@@ -393,101 +385,91 @@ const MallPort: React.FC = () => {
                   }}/>
                 ))}
               </div>
-            </section>
+            </ControlSection>
           )}
 
           {/* ── Temperature ── */}
-          <section>
-            <div className="section-heading">Exploration τ</div>
-            <div className="slider-group">
-              <input
-                type="range" min="0.01" max="5.0" step="0.01"
-                value={temperature}
-                style={sliderStyle}
-                onChange={e => setTemperature(parseFloat(e.target.value))}
-              />
-              <div className="slider-meta" style={{ marginTop: 4 }}>
-                <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Greedy</span>
-                <span className="slider-badge">τ = {temperature.toFixed(2)}</span>
-                <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Explore</span>
-              </div>
-            </div>
-          </section>
+          <ControlSection title="Exploration Tau">
+            <SliderField
+              label="Route softness"
+              min={0.01}
+              max={5}
+              step={0.01}
+              value={temperature}
+              valueLabel={`tau ${temperature.toFixed(2)}`}
+              minLabel="Greedy"
+              maxLabel="Explore"
+              onChange={setTemperature}
+            />
+          </ControlSection>
 
-          {/* ── Sponsor ── */}
-          <section>
-            <div className="section-heading">Sponsor Automation</div>
+          {/* Intervention channel */}
+          <ControlSection title="Intervention Mode">
             <div className="sponsor-cards">
-              <div
+              <button
+                type="button"
                 className={`sponsor-card ${sponsor === 'none' ? 'active-blue' : ''}`}
                 onClick={() => setSponsor('none')}
+                aria-pressed={sponsor === 'none'}
               >
                 <div className="sponsor-dot"/>
                 <div className="sponsor-text">
                   <strong>Baseline</strong>
                   <span>Standard topology routing.</span>
                 </div>
-              </div>
-              <div
+              </button>
+              <button
+                type="button"
                 className={`sponsor-card ${sponsor === 'beta' ? 'active-purple' : ''}`}
                 onClick={() => setSponsor('beta')}
+                aria-pressed={sponsor === 'beta'}
               >
                 <div className="sponsor-dot"/>
                 <div className="sponsor-text">
-                  <strong>Relevance Bid (β)</strong>
+                  <strong>Preference Bias (beta)</strong>
                   <span>Alignment-coupled amplification.</span>
                 </div>
-              </div>
-              <div
+              </button>
+              <button
+                type="button"
                 className={`sponsor-card ${sponsor === 'friction' ? 'active-amber' : ''}`}
                 onClick={() => setSponsor('friction')}
+                aria-pressed={sponsor === 'friction'}
               >
                 <div className="sponsor-dot"/>
                 <div className="sponsor-text">
-                  <strong>Friction Bid (S)</strong>
+                  <strong>Friction Reduction</strong>
                   <span>Alignment-independent cost reduction.</span>
                 </div>
-              </div>
+              </button>
             </div>
 
             {/* Decay slider */}
             {sponsor !== 'none' && (
               <div style={{ marginTop: 14 }}>
-                <div className="section-heading" style={{ marginBottom: 8 }}>Budget Decay</div>
-                <div className="slider-group">
-                  <input
-                    type="range" min="0" max="0.05" step="0.001"
-                    value={sponsorDecay}
-                    style={{ '--pct': `${(sponsorDecay / 0.05) * 100}%`,
-                             background: `linear-gradient(to right, var(--amber) 0%, var(--amber) ${(sponsorDecay / 0.05) * 100}%, var(--border-mid) ${(sponsorDecay / 0.05) * 100}%)`,
-                           } as React.CSSProperties}
-                    onChange={e => setSponsorDecay(parseFloat(e.target.value))}
-                  />
-                  <div className="slider-meta" style={{ marginTop: 4 }}>
-                    <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Permanent</span>
-                    <span style={{
-                      fontFamily: 'JetBrains Mono', fontSize: 11,
-                      background: 'rgba(245,166,35,0.15)',
-                      color: 'var(--amber)',
-                      padding: '2px 8px', borderRadius: 4,
-                      border: '1px solid rgba(245,166,35,0.3)',
-                    }}>
-                      {sponsorDecay === 0 ? 'Off' : `${(sponsorDecay * 100).toFixed(1)}% / step`}
-                    </span>
-                    <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Fast decay</span>
-                  </div>
-                </div>
+                <SliderField
+                  label="Intervention decay"
+                  min={0}
+                  max={0.05}
+                  step={0.001}
+                  value={sponsorDecay}
+                  valueLabel={sponsorDecay === 0 ? 'Off' : `${(sponsorDecay * 100).toFixed(1)}% / step`}
+                  minLabel="Persistent"
+                  maxLabel="Fast decay"
+                  tone="amber"
+                  onChange={setSponsorDecay}
+                />
                 {sponsorDecay > 0 && (
                   <div style={{
                     fontSize: 10, color: 'var(--text-muted)', marginTop: 6,
                     fontStyle: 'italic', lineHeight: 1.5,
                   }}>
-                    Half-life ≈ {Math.round(Math.log(2) / sponsorDecay)} steps
+                    Half-life about {Math.round(Math.log(2) / sponsorDecay)} steps
                   </div>
                 )}
               </div>
             )}
-          </section>
+          </ControlSection>
 
           {/* ── Live Node Breakdown ── */}
           {simState && (

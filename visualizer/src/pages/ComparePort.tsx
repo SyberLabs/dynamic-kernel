@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import { GitCompareArrows } from 'lucide-react';
+import { ControlSection, SliderField } from '../components/UIControls';
 
 interface TopologyResponse {
   labels: string[];
@@ -232,9 +233,6 @@ const ComparePort: React.FC = () => {
     });
   }, []);
 
-  const agentSliderStyle = { '--pct': `${((totalAgents - 100) / 2900) * 100}%` } as React.CSSProperties;
-  const tempSliderStyle = { '--pct': `${((temperature - 0.1) / 3.9) * 100}%` } as React.CSSProperties;
-
   const wheelEntropy = latestMetric(cities.wheel.history, 'mean_entropy');
   const rhizomeEntropy = latestMetric(cities.rhizome.history, 'mean_entropy');
   const wheelMixing = latestMetric(cities.wheel.history, 'mixing_time');
@@ -259,7 +257,7 @@ const ComparePort: React.FC = () => {
             <GitCompareArrows size={18} color="var(--green)" />
             <div>
               <h1>Topology Comparison</h1>
-              <p>WHEEL vs RHIZOME</p>
+              <p>Same agents, different graph</p>
             </div>
           </div>
         </div>
@@ -280,48 +278,36 @@ const ComparePort: React.FC = () => {
         </div>
 
         <div className="sidebar-content">
-          <section>
-            <div className="section-heading">Agent Count</div>
-            <div className="slider-group">
-              <input
-                type="range"
-                min="100"
-                max="3000"
-                step="100"
-                value={totalAgents}
-                style={agentSliderStyle}
-                onChange={event => setTotalAgents(parseInt(event.target.value, 10))}
-              />
-              <div className="slider-meta">
-                <span>100</span>
-                <span className="slider-badge">{totalAgents.toLocaleString()}</span>
-                <span>3,000</span>
-              </div>
-            </div>
-          </section>
+          <ControlSection title="Agent Count">
+            <SliderField
+              label="Shared population"
+              min={100}
+              max={3000}
+              step={100}
+              value={totalAgents}
+              valueLabel={totalAgents.toLocaleString()}
+              minLabel="100"
+              maxLabel="3,000"
+              tone="green"
+              onChange={value => setTotalAgents(Math.round(value))}
+            />
+          </ControlSection>
 
-          <section>
-            <div className="section-heading">Exploration Tau</div>
-            <div className="slider-group">
-              <input
-                type="range"
-                min="0.1"
-                max="4"
-                step="0.05"
-                value={temperature}
-                style={tempSliderStyle}
-                onChange={event => setTemperature(parseFloat(event.target.value))}
-              />
-              <div className="slider-meta">
-                <span>Greedy</span>
-                <span className="slider-badge">tau {temperature.toFixed(2)}</span>
-                <span>Explore</span>
-              </div>
-            </div>
-          </section>
+          <ControlSection title="Exploration Tau">
+            <SliderField
+              label="Route softness"
+              min={0.1}
+              max={4}
+              step={0.05}
+              value={temperature}
+              valueLabel={`tau ${temperature.toFixed(2)}`}
+              minLabel="Greedy"
+              maxLabel="Explore"
+              onChange={setTemperature}
+            />
+          </ControlSection>
 
-          <section>
-            <div className="section-heading">Shared Demographics</div>
+          <ControlSection title="Shared Agent Mix">
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {groups.map((group, index) => {
                 const pctStyle = {
@@ -347,22 +333,23 @@ const ComparePort: React.FC = () => {
                 );
               })}
             </div>
-          </section>
+          </ControlSection>
 
-          <section>
-            <div className="section-heading">Synchronized Sponsor</div>
+          <ControlSection title="Synchronized Intervention">
             <div className="sponsor-cards">
               {(['none', 'beta', 'friction'] as SponsorMode[]).map(mode => (
                 <button
+                  type="button"
                   key={mode}
                   className={`compare-mode-button ${sponsor === mode ? `active-${mode}` : ''}`}
                   onClick={() => setSponsor(mode)}
+                  aria-pressed={sponsor === mode}
                 >
-                  {mode === 'none' ? 'Baseline' : mode === 'beta' ? 'Beta Bid' : 'S Friction'}
+                  {mode === 'none' ? 'Baseline' : mode === 'beta' ? 'Preference Bias' : 'Friction Reduction'}
                 </button>
               ))}
             </div>
-          </section>
+          </ControlSection>
         </div>
       </aside>
 

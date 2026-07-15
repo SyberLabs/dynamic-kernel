@@ -64,12 +64,12 @@ interface NeuralFrame {
 const SESSION_ID = 'neural_port';
 
 const MODES: Array<{ mode: SymmetryMode; title: string; formula: string }> = [
-  { mode: 'ENTROPY_PI', title: 'Stationary Entropy', formula: '-sum pi·log(pi)' },
+  { mode: 'ENTROPY_PI', title: 'Stationary Entropy', formula: '-sum pi*log(pi)' },
   { mode: 'ROW_ENTROPY', title: 'Row Entropy', formula: '-Var(H_i)' },
   { mode: 'DETAILED_BALANCE', title: 'Detailed Balance', formula: '-KL(fwd||rev flux)' },
-  { mode: 'SPECTRAL_GAP', title: 'Spectral Gap', formula: '1 - soft ||P-1π||' },
-  { mode: 'WEIGHT_SYMMETRY', title: 'Weight Mirror', formula: '-||β - βᵀ||' },
-  { mode: 'COMPOSITE', title: 'Composite', formula: 'λ·sym + utility' },
+  { mode: 'SPECTRAL_GAP', title: 'Spectral Gap', formula: '1 - soft ||P-1pi||' },
+  { mode: 'WEIGHT_SYMMETRY', title: 'Weight Mirror', formula: '-||beta - beta^T||' },
+  { mode: 'COMPOSITE', title: 'Composite', formula: 'lambda*sym + utility' },
 ];
 
 const MODE_DEFAULT_ETA: Record<SymmetryMode, number> = {
@@ -114,6 +114,7 @@ const NeuralPort: React.FC = () => {
   const [connectionError, setConnectionError] = useState(false);
   const [gradientData, setGradientData] = useState<number[][] | null>(null);
   const [gradientLoading, setGradientLoading] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   // Phase chain state
   const [phases, setPhases] = useState<Array<{mode: SymmetryMode; steps: number}>>([{mode: 'WEIGHT_SYMMETRY', steps: 150}, {mode: 'ENTROPY_PI', steps: 150}]);
   const [phaseRunning, setPhaseRunning] = useState(false);
@@ -376,7 +377,7 @@ const NeuralPort: React.FC = () => {
     return (
       <div className="loading-screen">
         <div className="loading-ring" />
-        <span>{connectionError ? 'Neural optimizer backend unavailable.' : 'Initializing neural optimizer...'}</span>
+        <span>{connectionError ? 'Adaptive routing backend unavailable.' : 'Initializing adaptive routing lab...'}</span>
       </div>
     );
   }
@@ -385,8 +386,8 @@ const NeuralPort: React.FC = () => {
     <div className="neural-shell">
       <aside className="neural-sidebar">
         <div className="sidebar-brand">
-          <h1>Neural Optimizer</h1>
-          <p>Self-organizing beta dynamics</p>
+          <h1>Adaptive Routing Lab</h1>
+          <p>Routing memory dynamics</p>
         </div>
 
         <div className="stats-bar">
@@ -400,7 +401,7 @@ const NeuralPort: React.FC = () => {
           </div>
           {frame.health && (
             <div className={`health-badge health-${frame.health.toLowerCase()}`}>
-              {frame.health === 'HEALTHY' ? '● Active' : frame.health === 'SLOW' ? '◐ Slow' : '○ Stalled'}
+              {frame.health === 'HEALTHY' ? 'Active' : frame.health === 'SLOW' ? 'Slow' : 'Stalled'}
             </div>
           )}
         </div>
@@ -414,7 +415,7 @@ const NeuralPort: React.FC = () => {
             <div className="hyperparams">
               <Slider label="Neurons" min={4} max={16} step={1} value={nNeurons} onChange={setNNeurons} />
               <Slider label="Density" min={0.25} max={1} step={0.05} value={density} onChange={setDensity} />
-              <button className="neural-action full" onClick={() => loadNetwork(nNeurons, density)}>
+              <button type="button" className="neural-action full" onClick={() => loadNetwork(nNeurons, density)}>
                 Reload Network
               </button>
             </div>
@@ -425,9 +426,11 @@ const NeuralPort: React.FC = () => {
             <div className="mode-grid">
             {MODES.map(item => (
               <button
+                type="button"
                 key={item.mode}
                 className={`mode-card ${mode === item.mode ? 'active' : ''}`}
                 onClick={() => handleModeChange(item.mode)}
+                aria-pressed={mode === item.mode}
               >
                 <strong>{item.title}</strong>
                 <span>{item.formula}</span>
@@ -437,77 +440,16 @@ const NeuralPort: React.FC = () => {
           </section>
 
           <section>
-            <div className="section-heading">Hyperparameters</div>
-            <div className="hyperparams">
-            <Slider label={`Eta (rec: ${MODE_DEFAULT_ETA[mode]})`} min={0} max={1.0} step={0.01} value={eta} onChange={setEta} />
-            <Slider label="Finite Diff" min={0.0002} max={0.01} step={0.0002} value={eps} onChange={setEps} />
-            <div>
-              <Slider label="Noise" min={0} max={0.08} step={0.002} value={noiseSigma} onChange={setNoiseSigma} />
-              {noiseSigma > 0.02 && (
-                <div className="noise-warning">
-                  ⚠ Noise &gt;0.02 degrades gradient. Optimizer may walk backwards.
-                </div>
-              )}
-            </div>
-            <Slider label="Beta Max" min={3} max={30} step={1} value={betaMax} onChange={setBetaMax} />
-          </div>
-          </section>
-
-          {mode === 'COMPOSITE' && (
-            <section>
-              <div className="section-heading">Composite Target</div>
-              <Slider label="Lambda" min={0} max={1} step={0.02} value={compositeLambda} onChange={setCompositeLambda} />
-              <div className="utility-type-row">
-                <span>Utility</span>
-                {(['kl', 'l2'] as const).map(t => (
-                  <button
-                    key={t}
-                    className={`utility-type-btn ${compositeUtilityType === t ? 'active' : ''}`}
-                    onClick={() => setCompositeUtilityType(t)}
-                  >{t.toUpperCase()}</button>
-                ))}
-              </div>
-              {frame.target_feasibility && (
-                <div className={`feasibility-card feasibility-${frame.target_feasibility.status.toLowerCase()}`}>
-                  <strong>{frame.target_feasibility.status}</strong>
-                  <span>{frame.target_feasibility.message}</span>
-                  <em>
-                    L1 {frame.target_feasibility.l1_error.toFixed(3)}
-                    {' / '}
-                    max {frame.target_feasibility.max_abs_error.toFixed(3)}
-                  </em>
-                </div>
-              )}
-              <div className="target-pi-list">
-                {targetPi.map((value, idx) => (
-                  <div key={idx} className="target-pi-row">
-                    <span>N{idx + 1}</span>
-                    <input
-                      type="range"
-                      min={0}
-                      max={1}
-                      step={0.01}
-                      value={value}
-                      onChange={event => updateTarget(idx, parseFloat(event.target.value))}
-                    />
-                    <strong>{Math.round(value * 100)}%</strong>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          <section>
             <div className="neural-button-row">
-              <button className="neural-action" onClick={() => setPause(!paused)}>
+              <button type="button" className="neural-action" onClick={() => setPause(!paused)}>
                 {paused ? <Play size={14} /> : <Pause size={14} />}
                 {paused ? 'Run' : 'Pause'}
               </button>
-              <button className="neural-action" onClick={reset}>
+              <button type="button" className="neural-action" onClick={reset}>
                 <RotateCcw size={14} />
                 Reset
               </button>
-              <button className="neural-action" onClick={exportBeta}>
+              <button type="button" className="neural-action" onClick={exportBeta}>
                 <Download size={14} />
                 Export
               </button>
@@ -516,35 +458,105 @@ const NeuralPort: React.FC = () => {
             {connectionError && <div className="neural-warning">Stream disconnected. Refresh to reconnect.</div>}
           </section>
 
-          <section>
-            <div className="section-heading">Phase Chain</div>
-            <div className="phase-chain">
-              {phases.map((ph, idx) => (
-                <div key={idx} className="phase-row">
-                  <span>Phase {idx + 1}</span>
-                  <select
-                    value={ph.mode}
-                    onChange={e => setPhases(prev => prev.map((p, i) => i === idx ? { ...p, mode: e.target.value as SymmetryMode } : p))}
-                  >
-                    {MODES.map(m => <option key={m.mode} value={m.mode}>{m.title}</option>)}
-                  </select>
-                  <input
-                    type="number" min={10} max={500} step={10}
-                    value={ph.steps}
-                    onChange={e => setPhases(prev => prev.map((p, i) => i === idx ? { ...p, steps: parseInt(e.target.value) } : p))}
-                  />
+          <details
+            className="advanced-disclosure"
+            open={advancedOpen}
+            onToggle={event => setAdvancedOpen(event.currentTarget.open)}
+          >
+            <summary>Advanced Tuning</summary>
+
+            <section>
+              <div className="section-heading">Hyperparameters</div>
+              <div className="hyperparams">
+                <Slider label={`Eta (rec: ${MODE_DEFAULT_ETA[mode]})`} min={0} max={1.0} step={0.01} value={eta} onChange={setEta} />
+                <Slider label="Finite Diff" min={0.0002} max={0.01} step={0.0002} value={eps} onChange={setEps} />
+                <div>
+                  <Slider label="Noise" min={0} max={0.08} step={0.002} value={noiseSigma} onChange={setNoiseSigma} />
+                  {noiseSigma > 0.02 && (
+                    <div className="noise-warning">
+                      Noise above 0.02 degrades the gradient estimate. Optimizer may walk backwards.
+                    </div>
+                  )}
                 </div>
-              ))}
-              <button className="neural-action full" onClick={runPhaseChain} disabled={phaseRunning}>
-                {phaseRunning ? 'Running...' : '▶ Run Chain'}
-              </button>
-              {phaseSummaries.map((ph, i) => (
-                <div key={i} className="phase-summary">
-                  <strong>{ph.mode}</strong>: ΔΣ={ph.delta_sigma?.toFixed(4)}
+                <Slider label="Beta Max" min={3} max={30} step={1} value={betaMax} onChange={setBetaMax} />
+              </div>
+            </section>
+
+            {mode === 'COMPOSITE' && (
+              <section>
+                <div className="section-heading">Composite Target</div>
+                <Slider label="Lambda" min={0} max={1} step={0.02} value={compositeLambda} onChange={setCompositeLambda} />
+                <div className="utility-type-row">
+                  <span>Utility</span>
+                  {(['kl', 'l2'] as const).map(t => (
+                    <button
+                      type="button"
+                      key={t}
+                      className={`utility-type-btn ${compositeUtilityType === t ? 'active' : ''}`}
+                      onClick={() => setCompositeUtilityType(t)}
+                    >{t.toUpperCase()}</button>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </section>
+                {frame.target_feasibility && (
+                  <div className={`feasibility-card feasibility-${frame.target_feasibility.status.toLowerCase()}`}>
+                    <strong>{frame.target_feasibility.status}</strong>
+                    <span>{frame.target_feasibility.message}</span>
+                    <em>
+                      L1 {frame.target_feasibility.l1_error.toFixed(3)}
+                      {' / '}
+                      max {frame.target_feasibility.max_abs_error.toFixed(3)}
+                    </em>
+                  </div>
+                )}
+                <div className="target-pi-list">
+                  {targetPi.map((value, idx) => (
+                    <div key={idx} className="target-pi-row">
+                      <span>N{idx + 1}</span>
+                      <input
+                        type="range"
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        value={value}
+                        onChange={event => updateTarget(idx, parseFloat(event.target.value))}
+                      />
+                      <strong>{Math.round(value * 100)}%</strong>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            <section>
+              <div className="section-heading">Phase Chain</div>
+              <div className="phase-chain">
+                {phases.map((ph, idx) => (
+                  <div key={idx} className="phase-row">
+                    <span>Phase {idx + 1}</span>
+                    <select
+                      value={ph.mode}
+                      onChange={e => setPhases(prev => prev.map((p, i) => i === idx ? { ...p, mode: e.target.value as SymmetryMode } : p))}
+                    >
+                      {MODES.map(m => <option key={m.mode} value={m.mode}>{m.title}</option>)}
+                    </select>
+                    <input
+                      type="number" min={10} max={500} step={10}
+                      value={ph.steps}
+                      onChange={e => setPhases(prev => prev.map((p, i) => i === idx ? { ...p, steps: parseInt(e.target.value) } : p))}
+                    />
+                  </div>
+                ))}
+                <button type="button" className="neural-action full" onClick={runPhaseChain} disabled={phaseRunning}>
+                  {phaseRunning ? 'Running...' : 'Run Chain'}
+                </button>
+                {phaseSummaries.map((ph, i) => (
+                  <div key={i} className="phase-summary">
+                    <strong>{ph.mode}</strong>: delta Sigma={ph.delta_sigma?.toFixed(4)}
+                  </div>
+                ))}
+              </div>
+            </section>
+          </details>
         </div>
       </aside>
 
@@ -554,23 +566,24 @@ const NeuralPort: React.FC = () => {
             <h2>Topology Metrics</h2>
             <div className="panel-actions">
               <button 
+                type="button"
                 className={`gradient-fetch-btn ${gradientLoading ? 'loading' : ''}`}
                 onClick={fetchGradient}
                 disabled={gradientLoading}
               >
-                {gradientLoading ? 'Computing...' : 'Fetch Gradient ∂Σ/∂β'}
+                {gradientLoading ? 'Computing...' : 'Fetch Gradient dSigma/dbeta'}
               </button>
             </div>
           </header>
           
           <div className="heatmap-container">
             <div className="heatmap-box">
-              <span className="heatmap-label">β Weights</span>
+              <span className="heatmap-label">Beta Weights</span>
               <WeightHeatmap beta={frame.beta} />
             </div>
             {gradientData && (
               <div className="heatmap-box">
-                <span className="heatmap-label">∂Σ/∂β Gradient</span>
+                <span className="heatmap-label">dSigma/dbeta Gradient</span>
                 <GradientHeatmap gradient={gradientData} />
               </div>
             )}
